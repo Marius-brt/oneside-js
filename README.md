@@ -1,6 +1,6 @@
 <div align="center" style="margin-bottom: 20px">
     <a href="https://github.com/Marius-brt/oneside-js">
-        <img src="https://raw.githubusercontent.com/Marius-brt/oneside-js/master/logo.png" alt="Logo" width="125">
+        <img src="logo.png" alt="Logo" width="125">
     </a>
     <p style="font-size: 20px; font-weight: 600; margin-bottom: 30px">OneSide</p>
     <img alt="npm" src="https://img.shields.io/npm/v/oneside">
