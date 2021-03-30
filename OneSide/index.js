@@ -7,12 +7,15 @@ const chokidar = require('chokidar')
 const path = require('path')
 const htmlParser = require('./htmlParser')
 const mcache = require('memory-cache')
+const scriptParser = require('./scriptParser')
+const cookieParser = require('cookie-parser')
 
 const app = express()
 app.use(express.json());
 app.use(express.urlencoded({
   extended: true
 }))
+app.use(cookieParser())
 
 var confData = {}
 
@@ -58,6 +61,13 @@ mcache.put('err404', fs.readFileSync(config.errors[404] == "" ? `${__dirname}/pa
 var views = []
 var components = {}
 
+chokidar.watch(config.appIndex == "" ? `${__dirname}/pages/sample.html` :`${process.cwd()}/${config.appIndex}`).on('change', (at) => {
+    mcache.put('sample', fs.readFileSync(at, "utf8"))
+    if(devMode && reloadObj != null) {
+        reloadObj.reload()
+    }
+})
+
 chokidar.watch(`${process.cwd()}/${config.paths.components}`).on('all', (event, at) => {
     var comp = path.basename(at).replace('.html', '').replace(/ /g, '').toLowerCase()
     if (event === 'add' || event === 'change') {
@@ -73,7 +83,8 @@ chokidar.watch(`${process.cwd()}/${config.paths.components}`).on('all', (event, 
 
 chokidar.watch(`${process.cwd()}/${config.paths.views}`).on('all', (event, at) => {
     if (event === 'add' || event === 'change') {
-        views[path.basename(at)] = htmlParser(fs.readFileSync(at, "utf8"), components)
+        var fl = scriptParser(fs.readFileSync(at, "utf8"))
+        views[path.basename(at)] = htmlParser(fl.html, fl.js, components)
     }
     if(event == 'unlink') {
         delete views[path.basename(at)]
@@ -90,23 +101,20 @@ chokidar.watch(`${process.cwd()}/${config.paths.sources}`).on('all', (event, at)
     }
 })
 
-chokidar.watch(config.appIndex == "" ? `${__dirname}/pages/sample.html` :`${process.cwd()}/${config.appIndex}`).on('change', (at) => {
-    mcache.put('sample', fs.readFileSync(at, "utf8"))
-    if(devMode && reloadObj != null) {
-        reloadObj.reload()
-    }
-})
-
 class Server {
+    use(...args) {
+        app.use(args)
+    }
+
     get(uri = "/", callback) {
-        app.get(uri, (req, res) => {
-            if(typeof callback == 'function') callback(req, res)
+        app.get(uri, (req, res, next) => {
+            if(typeof callback == 'function') callback(req, res, next)
         })
     }
 
     post(uri = "/", callback) {
-        app.post(uri, (req, res) => {
-            if(typeof callback == 'function') callback(req, res)
+        app.post(uri, (req, res, next) => {
+            if(typeof callback == 'function') callback(req, res, next)
         })
     }
 

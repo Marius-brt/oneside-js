@@ -1,5 +1,6 @@
 const splitRetain = require('split-retain')
 const fs = require('fs')
+const scriptParser = require('./scriptParser')
 
 String.prototype.extract = function(prefix, suffix) {
 	s = this;
@@ -22,33 +23,40 @@ String.prototype.extract = function(prefix, suffix) {
 	return s;
 };
 
-module.exports = (html, components) => {
+module.exports = (html, js, components) => {
+    var compJs = []
     for (const [el, key] of Object.entries(components)) {
-        var lines = splitRetain(html, `<${el} `, { leadingSeparator: true })
+        var lines = splitRetain(html, `<${el}`, { leadingSeparator: true })
         lines.forEach((l, ind) => {
-            if(l.startsWith(`<${el} `)) {
+            if(l.startsWith(`<${el}`)) {
                 var sp = []
                 if(l.includes(`</${el}>`))
                     sp = l.split(`</${el}>`)
                 else 
                     sp = l.split(`/>`)
                 if(sp.length > 0) {
-                    sp[0] = sp[0].replace(`<${el} `, '')
+                    sp[0] = sp[0].replace(`<${el}`, '')
                     var args = sp[0].split("=")
                     var res = {}
-                    for(i = 0; i < args.length; i += 2) {
-                        res[args[i]] = args[i + 1].split(/['`"]+/)[1]
+                    if(args.length > 1) {
+                        for(i = 0; i < args.length; i += 2) {
+                            res[args[i]] = args[i + 1].split(/['`"]+/)[1]
+                        }
                     }
-                    var file = fs.readFileSync(key, "utf8")
+                    var file = scriptParser(fs.readFileSync(key, "utf8"))
                     for (const [k, vl] of Object.entries(res)) {
-                        file = file.replace(new RegExp(`:${k}:`, 'g'), vl)
+                        file.html = file.html.replace(new RegExp(`:${k}:`, 'g'), vl)
                     }
-                    sp[0] = file
+                    compJs[el] = file.js
+                    sp[0] = file.html
                     lines[ind] = sp.join('')
                 }
             }
         })
         html = lines.join('')
     }
-    return html
+    for (const [el, key] of Object.entries(components)) {
+        js += compJs[el]
+    }
+    return {html, js}
 }
