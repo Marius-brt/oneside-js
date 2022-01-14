@@ -28,14 +28,14 @@ export function init(settings: Partial<Settings> = {}): Server {
       }),
     ),
   );
-  get('https://api.npms.io/v2/package/oneside', (resp) => {
+  get('https://registry.npmjs.org/oneside/latest', (resp) => {
     let data = '';
     resp.on('data', (chunk) => {
       data += chunk;
     });
     resp.on('end', () => {
       const version = require('../package.json').version;
-      const latest = JSON.parse(data).collected.metadata.version;
+      const latest = JSON.parse(data).version;
       if (version !== latest) {
         console.log(
           color.cyan(
