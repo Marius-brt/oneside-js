@@ -2,7 +2,7 @@
     <a href="https://github.com/Marius-brt/oneside-js">
         <img src="img/logo.png" alt="Logo" width="125">
     </a>
-    <p style="font-size: 20px; font-weight: 600; margin-bottom: 30px">OneSide</p>
+    <h2 style="margin-bottom: 30px">OneSide</h2>
     <img alt="npm" src="https://img.shields.io/npm/v/oneside">
     <img alt="npm" src="https://img.shields.io/npm/dt/oneside">
     <img alt="npm bundle size" src="https://img.shields.io/bundlephobia/min/oneside">
