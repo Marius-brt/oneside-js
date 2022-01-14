@@ -1,6 +1,6 @@
 <div align="center" style="margin-bottom: 20px">
     <a href="https://github.com/Marius-brt/oneside-js">
-        <img src="logo.png" alt="Logo" width="125">
+        <img src="img/logo.png" alt="Logo" width="125">
     </a>
     <p style="font-size: 20px; font-weight: 600; margin-bottom: 30px">OneSide</p>
     <img alt="npm" src="https://img.shields.io/npm/v/oneside">
@@ -36,7 +36,16 @@ Now create a new project. To start, open the folder where you want to create you
 oneside init my-project
 ```
 
-Then follow the commands shown to start your server.
+Then enter in your project folder and start the server using OneSide cli.
+
+```bash
+cd my-project
+oneside start
+```
+
+And that's it! You are ready to code!
+
+![cli](img/cli.png)
 
 # Usage
 

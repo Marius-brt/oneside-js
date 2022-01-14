@@ -24,6 +24,7 @@ export function init(settings: Partial<Settings> = {}): Server {
         font: fonts[Math.floor(Math.random() * fonts.length)],
       }),
     ),
+    '\n',
   );
   const app = express();
   app.use(express.json());
