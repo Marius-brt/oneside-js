@@ -27,20 +27,20 @@ OneSide is a web server that allows you to create a website with NodeJs. With On
 Start by installing OneSide Cli on your computer. This package allows you to create a OneSide project easily and to create your website with the live server. This allows you to automatically refresh and restart your server when you modify it.
 
 ```bash
-npm i --global oneside-cli
+$ npm i --global oneside-cli
 ```
 
 Now create a new project. To start, open the folder where you want to create your project with your cmd (a new folder will be created in it). Then enter the following command to create your project.
 
 ```bash
-oneside init my-project
+$ oneside init my-project
 ```
 
 Then enter in your project folder and start the server using OneSide cli.
 
 ```bash
-cd my-project
-oneside start
+$ cd my-project
+$ oneside start
 ```
 
 And that's it! You are ready to code!
