@@ -3,6 +3,7 @@ export interface Settings {
   address: string;
   favicon: string;
   baseFile: string;
+  showCompiling: boolean;
   paths: {
     views: string;
     sources: string;

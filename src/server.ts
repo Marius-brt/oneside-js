@@ -1,4 +1,4 @@
-import express, { Response } from 'express';
+import express from 'express';
 import chalk from 'chalk';
 import portfinder from 'portfinder';
 import favicon from 'serve-favicon';
@@ -11,10 +11,11 @@ import { minify } from 'html-minifier';
 import chokidar from 'chokidar';
 import http from 'http';
 import socketIo from 'socket.io';
-import { spawn } from 'child_process';
+import lineReader from 'line-reader';
+import progress from 'cli-progress';
+import colors from 'ansi-colors';
 
 import { Settings } from './settings';
-import { Render } from './render';
 import { resolve } from 'path';
 
 export class Server {
@@ -24,6 +25,7 @@ export class Server {
     address: 'localhost',
     favicon: '',
     baseFile: 'index.ejs',
+    showCompiling: false,
     paths: {
       views: './views',
       sources: './src',
@@ -40,18 +42,21 @@ export class Server {
       console.log(chalk.red('!> Base File not found !\n'));
       process.exit(1);
     }
-    const baseHtml = getBaseHtml(this.settings.baseFile);
     if (this.settings.favicon !== '') app.use(favicon(resolve(this.settings.favicon)));
     app.use(normalize(this.settings.paths.sources), express.static(resolve(this.settings.paths.sources)));
-    compile(this.settings.paths.views, baseHtml, this.dev);
     this.server = new http.Server(app);
-    if (this.dev) this.io = require('socket.io')(this.server);
+    if (this.dev) {
+      this.io = require('socket.io')(this.server);
+      console.log(chalk.green(`> Dev mode activated`));
+    }
   }
   set(name: string, value: string) {
     this.app.set(name, value);
   }
-  use(...handlers: any[]) {
-    this.app.use(handlers);
+  use(...handlers: any[]): void {
+    if (handlers.length >= 2 && typeof handlers[0] === 'string' && typeof handlers[1] === 'function')
+      this.app.use(handlers[0], handlers[1]);
+    else this.app.use(handlers);
   }
   all(path: string, ...handlers: any[]) {
     this.app.all(path, handlers);
@@ -77,52 +82,63 @@ export class Server {
   head(path: string, ...handlers: any[]) {
     this.app.head(path, handlers);
   }
-  render(file: string, res: Response): Render {
-    return new Render(file, res, this.dev);
-  }
   listen(callback?: () => void) {
-    portfinder.getPort(
-      {
-        port: this.settings.port,
-      },
-      (err, port) => {
-        if (err) return console.log(chalk.red('- All ports seem to be busy !', err));
-        if (port !== this.settings.port) console.error(chalk.yellow(`> Port ${this.settings.port} is already in use`));
-        if (this.dev) {
-          console.log(chalk.green(`> Dev mode activated`));
-          if (this.io) {
-            this.io.on('connection', (socket) => {
-              socket.emit('connected_live');
-            });
-            chokidar
-              .watch(process.cwd(), {
-                ignoreInitial: true,
-                ignored: /(^|[\/\\])\../,
-                persistent: true,
-              })
-              .on('all', (event, path) => {
-                if (
-                  path.includes(resolve(this.settings.paths.sources)) ||
-                  path.includes(resolve(this.settings.paths.views)) ||
-                  path.includes(resolve(this.settings.paths.components)) ||
-                  path === join(process.cwd(), this.settings.baseFile)
-                ) {
-                  compile(this.settings.paths.views, getBaseHtml(this.settings.baseFile), true, () => {
-                    this.io?.sockets.emit('reload_live');
+    compile(
+      this.settings.paths.views,
+      getBaseHtml(this.settings.baseFile),
+      this.settings.showCompiling,
+      this.dev,
+      () => {
+        portfinder.getPort(
+          {
+            port: this.settings.port,
+          },
+          (err, port) => {
+            if (err) return console.log(chalk.red('- All ports seem to be busy !', err));
+            if (port !== this.settings.port)
+              console.error(chalk.yellow(`> Port ${this.settings.port} is already in use`));
+            if (this.dev) {
+              if (this.io) {
+                this.io.on('connection', (socket) => {
+                  socket.emit('connected_live');
+                });
+                chokidar
+                  .watch(process.cwd(), {
+                    ignoreInitial: true,
+                    ignored: /(^|[\/\\])\../,
+                    persistent: true,
+                  })
+                  .on('all', (event, path) => {
+                    if (
+                      path.includes(resolve(this.settings.paths.sources)) ||
+                      path.includes(resolve(this.settings.paths.views)) ||
+                      path.includes(resolve(this.settings.paths.components)) ||
+                      path === join(process.cwd(), this.settings.baseFile)
+                    ) {
+                      compile(
+                        this.settings.paths.views,
+                        getBaseHtml(this.settings.baseFile),
+                        this.settings.showCompiling,
+                        true,
+                        () => {
+                          this.io?.sockets.emit('reload_live');
+                        },
+                      );
+                    }
                   });
-                }
+              }
+              this.server.listen(port, this.settings.address, () => {
+                console.log(chalk.green(`> Server OneSide started on http://${this.settings.address}:${port} !`));
+                if (callback) callback();
               });
-          }
-          this.server.listen(port, this.settings.address, () => {
-            console.log(chalk.green(`> Server OneSide started on http://${this.settings.address}:${port} !`));
-            if (callback) callback();
-          });
-        } else {
-          this.server.listen(port, this.settings.address, () => {
-            console.log(chalk.green(`> Server OneSide started on http://${this.settings.address}:${port} !`));
-            if (callback) callback();
-          });
-        }
+            } else {
+              this.server.listen(port, this.settings.address, () => {
+                console.log(chalk.green(`> Server OneSide started on http://${this.settings.address}:${port} !`));
+                if (callback) callback();
+              });
+            }
+          },
+        );
       },
     );
   }
@@ -134,10 +150,9 @@ function getBaseHtml(baseFile: string): string {
     console.log(chalk.red('!> Base File is empty !\n'));
     process.exit(1);
   }
-  const $ = cheerio.load(baseHtml);
   const miss = [];
-  if ($('body').html() === '') miss.push('body tag');
-  if ($('head').html() === '') miss.push('head tag');
+  if (!baseHtml.includes('<body')) miss.push('body tag');
+  if (!baseHtml.includes('<head')) miss.push('head tag');
   if (miss.length > 0) {
     console.log(chalk.red(`!> Missing ${miss.join(' and ')} in Base File !\n`));
     process.exit(1);
@@ -153,13 +168,23 @@ function normalize(path: string): string {
   return '/' + path;
 }
 
-function compile(pages: string, baseHtml: string, dev: boolean, callback?: () => void) {
+function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: boolean, callback?: () => void) {
   const path = resolve('./compiled');
+  const bar = showCompiling
+    ? new progress.SingleBar({
+        format: colors.blue('> Compiling {value}/{total} pages in {duration}s'),
+        hideCursor: true,
+      })
+    : null;
   if (!existsSync(path)) mkdirSync(path);
   else emptyDirSync(path);
   glob(`${pages}/**/*.ejs`)
     .then(async (views) => {
+      if (bar) bar.start(views.length, 0);
+      let pageId = 0;
       for await (const el of views) {
+        pageId++;
+        if (bar) bar.update(pageId);
         const splt = el.split('\\');
         splt.shift();
         const pth = './compiled/' + splt.join('/');
@@ -172,63 +197,107 @@ function compile(pages: string, baseHtml: string, dev: boolean, callback?: () =>
           const splt2 = el.split('\\');
           splt2.shift();
           const pth2 = pages + '/' + splt2.join('/');
-          const pageHtml = readFileSync(pth2, { encoding: 'utf-8' });
-          if (pageHtml !== '') {
-            if (pageHtml.includes('<body') || pageHtml.includes('<body')) {
-              console.log(chalk.red(`!> Failed to compile ! Page ${el} contain body or head tag.`));
-              process.exit(1);
-            }
-            const htmlSplt = splitOnce(pageHtml, '<script');
-            if (htmlSplt.length > 1) $('body').append(htmlSplt[1]);
-            const body = $('body').children();
-            let found = false;
-            for (let i = body.length - 1; i >= 0; i--) {
-              if (!found && ($(body[i])[0].name !== 'script' || i === 0)) {
-                found = true;
-                $(body[i]).after(htmlSplt[0] + '$GLOBAL$');
+          const lines: string[] = [];
+          const fileTags: { name: string; value: string }[] = [];
+          const tags: string[] = ['title', 'description', 'keywords', 'author', 'viewport'];
+          lineReader.eachLine(
+            pth2,
+            (line) => {
+              const lnTag = tags.find((tag) => line.trim().startsWith(`:${tag}:`));
+              if (lnTag)
+                fileTags.push({
+                  name: lnTag,
+                  value: line.replace(`:${lnTag}:`, '').trim(),
+                });
+              else if (!isEmptyOrSpaces(line)) lines.push(line);
+            },
+            async () => {
+              let pageHtml = lines.join('\n');
+              for await (const tag of fileTags) {
+                switch (tag.name) {
+                  case 'title':
+                    if ($('title').length > 0) $('title').first().text(tag.value);
+                    else $('head').append(`<title>${tag.value}</title>`);
+                    break;
+                  default:
+                    if ($(`meta[name="${tag.name}"]`).length > 0)
+                      $(`meta[name="${tag.name}"]`).attr('content', tag.value);
+                    else $('head').append(`<meta name="${tag.name}" content="${tag.value}">`);
+                    break;
+                }
               }
-            }
-          }
-          if (dev) {
-            if (!$.html().includes('socket.io/socket.io.js')) {
-              $('body').append(`<script src="/socket.io/socket.io.js"></script>
-				<script>
-				  const socket = io();
-				  let live_s_connected = false;
-				  socket.on('connected_live', () => {
-					  if(live_s_connected) location.reload()
-					  live_s_connected = true;
-					console.log("Connected to OneSide Live Server !")
-				  })
-				  socket.on('reload_live', () => {
-					  location.reload()
-				  })
-				</script>`);
-            } else {
-              $('body').append(`<script>
-			  		let live_s_connected = false;
-					socket.on('connected_live', () => {
-						if(live_s_connected) location.reload()
-						live_s_connected = true;
-						console.log("Connected to OneSide Live Server !")
-					})
-				  socket.on('reload_live', () => {
-					  location.reload()
-				  })
-				</script>`);
-            }
-          }
-          writeFileSync(
-            pth,
-            unescapeHTML(
-              minify($.html(), {
-                removeComments: true,
-                collapseWhitespace: true,
-              }),
-            ),
+              if (pageHtml !== '') {
+                if (pageHtml.includes('<body') || pageHtml.includes('<head')) {
+                  console.log(chalk.red(`!> Failed to compile ! Page ${el} contain body or head tag.`));
+                  process.exit(1);
+                }
+                const $2 = cheerio.load(pageHtml, null, false);
+                for await (const pageTag of ['title', 'meta', 'link', 'style']) {
+                  $2(pageTag).each((i, item) => {
+                    const styleHtml = $2.html(item);
+                    $2(item).remove();
+                    $('head').append(styleHtml);
+                  });
+                }
+                pageHtml = $2.html();
+                const htmlSplt = splitOnce(pageHtml, '<script');
+                if (htmlSplt.length > 1) $('body').append(htmlSplt[1]);
+                const body = $('body').children();
+                if (body.length > 0) {
+                  let found = false;
+                  for (let i = body.length - 1; i >= 0; i--) {
+                    if (!found && ($(body[i])[0].name !== 'script' || i === 0)) {
+                      found = true;
+                      $(body[i]).after(htmlSplt[0] + '$GLOBAL$');
+                    }
+                  }
+                } else {
+                  $('body').prepend(htmlSplt[0] + '$GLOBAL$');
+                }
+              }
+              if (dev) {
+                if (!$.html().includes('socket.io/socket.io.js')) {
+                  $('body').append(`<script src="/socket.io/socket.io.js"></script>
+						<script>
+						  const socket = io();
+						  let live_s_connected = false;
+						  socket.on('connected_live', () => {
+							  if(live_s_connected) location.reload()
+							  live_s_connected = true;
+							console.log("Connected to OneSide Live Server !")
+						  })
+						  socket.on('reload_live', () => {
+							  location.reload()
+						  })
+						</script>`);
+                } else {
+                  $('body').append(`<script>
+							  let live_s_connected = false;
+							socket.on('connected_live', () => {
+								if(live_s_connected) location.reload()
+								live_s_connected = true;
+								console.log("Connected to OneSide Live Server !")
+							})
+						  socket.on('reload_live', () => {
+							  location.reload()
+						  })
+						</script>`);
+                }
+              }
+              writeFileSync(
+                pth,
+                unescapeHTML(
+                  minify($.html(), {
+                    removeComments: true,
+                    collapseWhitespace: true,
+                  }),
+                ),
+              );
+            },
           );
         });
       }
+      if (bar) bar.stop();
       if (callback) callback();
     })
     .catch((err) => {
@@ -245,4 +314,8 @@ function splitOnce(s: string, on: string): string[] {
 
 function unescapeHTML(escapedHTML: string) {
   return escapedHTML.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
+function isEmptyOrSpaces(str: string): boolean {
+  return str === null || str.match(/^ *$/) !== null;
 }

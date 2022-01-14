@@ -10,17 +10,12 @@ export class Render {
     file: '',
     global: {},
     data: {},
-    title: '',
   };
   private dev: boolean;
   constructor(file: string, res: Response, dev: boolean) {
     this.settings.file = file.replace('.ejs', '');
     this.res = res;
     this.dev = dev;
-  }
-  title(title: string): Render {
-    this.settings.title = title;
-    return this;
   }
   status(code: number): Render {
     this.settings.status = code;
@@ -41,7 +36,7 @@ export class Render {
       { cache: !this.dev },
       (err, html) => {
         if (err) {
-          console.log(chalk.red('!> Failed to render page !'));
+          console.log(chalk.red('!> Failed to render page !\n', err));
           return this.res.status(500).send('Failed to render page !');
         }
         if (Object.keys(this.settings.global).length > 0)

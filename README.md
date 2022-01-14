@@ -44,12 +44,12 @@ Example of a basic OneSide server.
 
 ```js
 const oneside = require('oneside');
-const app = oneside({
+const app = oneside.init({
   port: 5050,
 });
 
 oneside.get('/', (req, res) => {
-  app
+  oneside
     .render('home', res)
     .ejs({
       message: 'Hello world !',
