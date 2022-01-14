@@ -8,6 +8,10 @@
     <img alt="npm bundle size" src="https://img.shields.io/bundlephobia/min/oneside">
 </div>
 
+<br>
+
+> v2.0 is coming soon...
+
 OneSide is a web server that allows you to create a website with NodeJs. With OneSide, you create the backend and the frontend of your application in a single project. OneSide uses Express for the HTTP server.
 
 ## Features
