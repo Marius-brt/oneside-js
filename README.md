@@ -2,7 +2,8 @@
     <a href="https://www.npmjs.com/package/oneside">
         <img src="img/logo.png" alt="Logo" width="125">
     </a>
-    <p style="font-size: 30px;font-weight:600;margin-bottom: 30px">OneSide</p>
+    <h1>OneSide</h1>
+    <br>
     <img alt="npm" src="https://img.shields.io/npm/v/oneside">
     <img alt="npm" src="https://img.shields.io/npm/dt/oneside">
     <img alt="npm bundle size" src="https://img.shields.io/bundlephobia/min/oneside">
