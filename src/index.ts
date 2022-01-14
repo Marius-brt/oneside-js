@@ -19,8 +19,7 @@ export function render(file: string, res: Response): Render {
 }
 
 export function init(settings: Partial<Settings> = {}): Server {
-  if (settings.ejsCache != undefined) useEjsCache = settings.ejsCache;
-  console.clear();
+  if (settings.ejsCache !== undefined) useEjsCache = settings.ejsCache;
   const fonts: Fonts[] = ['Ghost', 'Sub-Zero', 'Delta Corps Priest 1', 'Dancing Font', 'DOS Rebel', 'ANSI Regular'];
   console.log(
     color.yellow(

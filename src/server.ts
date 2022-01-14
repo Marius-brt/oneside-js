@@ -15,6 +15,7 @@ import lineReader from 'line-reader';
 import progress from 'cli-progress';
 import colors from 'ansi-colors';
 import dns from 'dns';
+import open from 'open';
 
 import { Settings } from './settings';
 import { resolve } from 'path';
@@ -43,7 +44,7 @@ export class Server {
     this.app = app;
     this.settings = { ...this.settings, ...settings };
     if (this.settings.baseFile === '' || !existsSync(join(process.cwd(), this.settings.baseFile))) {
-      console.log(chalk.red('!> Base File not found !\n'));
+      console.log(chalk.red(`!> Base file ${this.settings.baseFile} not found !\n`));
       process.exit(1);
     }
     if (this.settings.favicon !== '') app.use(favicon(resolve(this.settings.favicon)));
@@ -55,7 +56,7 @@ export class Server {
     }
     this.settings.publicPaths.forEach((pblPath) => {
       const route = resolve(pblPath).replace(process.cwd(), '');
-      app.use(route, express.static(pblPath));
+      app.use(normalize(route), express.static(resolve(pblPath)));
     });
   }
   set(name: string, value: string) {
@@ -108,9 +109,9 @@ export class Server {
             }
             if (port !== this.settings.port)
               console.error(chalk.yellow(`> Port ${this.settings.port} is already in use`));
-            dns.lookup(require('os').hostname(), (err, add) => {
-              if (err && this.settings.useLocalIp) {
-                console.log(chalk.red('- Unable to retrieve local IP address !\n', err));
+            dns.lookup(require('os').hostname(), (dnsErr, add) => {
+              if (dnsErr && this.settings.useLocalIp) {
+                console.log(chalk.red('- Unable to retrieve local IP address !\n', dnsErr));
                 process.exit(1);
               }
               if (this.dev) {
@@ -140,6 +141,8 @@ export class Server {
                             this.io?.sockets.emit('reload_live');
                           },
                         );
+                      } else {
+                        if (process.send) process.send('restart');
                       }
                     });
                 }
@@ -151,6 +154,11 @@ export class Server {
                       }:${port} !`,
                     ),
                   );
+                  if (process.argv[3] === 'first') {
+                    open(`http://${this.settings.useLocalIp ? add : this.settings.address}:${port}`);
+                  } else {
+                    this.io?.sockets.emit('reload_live');
+                  }
                   if (callback) callback();
                 });
               } else {
@@ -176,14 +184,14 @@ export class Server {
 function getBaseHtml(baseFile: string): string {
   const baseHtml = readFileSync(join(process.cwd(), baseFile), { encoding: 'utf-8' });
   if (baseHtml === '') {
-    console.log(chalk.red('!> Base File is empty !\n'));
+    console.log(chalk.red('!> Base file is empty !\n'));
     process.exit(1);
   }
   const miss = [];
   if (!baseHtml.includes('<body')) miss.push('body tag');
   if (!baseHtml.includes('<head')) miss.push('head tag');
   if (miss.length > 0) {
-    console.log(chalk.red(`!> Missing ${miss.join(' and ')} in Base File !\n`));
+    console.log(chalk.red(`!> Missing ${miss.join(' and ')} in base file !\n`));
     process.exit(1);
   }
   return baseHtml;
@@ -285,7 +293,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
                 }
               }
               if (dev) {
-                if (!$.html().includes('socket.io/socket.io.js')) {
+                if (!baseHtml.includes('socket.io/socket.io.js')) {
                   $('body').append(`<script src="/socket.io/socket.io.js"></script>
 						<script>
 						  const socket = io();
