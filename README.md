@@ -10,6 +10,14 @@
 
 OneSide is a web server that allows you to create a website with NodeJs. With OneSide, you create the backend and the frontend of your application in a single project. OneSide uses Express for the HTTP server.
 
+## Features
+
+- 📨 Fast thanks to pre-compiled and cached pages
+- ⚙️ Pre-rendered page with EJS
+- 👍 Easy to use (Same structure as an Express project)
+- 🔁 Live server
+- ✨ Coded in TypeScript
+
 # Quick start
 
 Start by installing OneSide Cli on your computer. This package allows you to create a OneSide project easily and to create your website with the live server. This allows you to automatically refresh and restart your server when you modify it.
@@ -31,13 +39,19 @@ Then follow the commands shown to start your server.
 Example of a basic OneSide server.
 
 ```js
-const oneside = require('oneside')
+const oneside = require('oneside');
+const app = oneside({
+  port: 5050,
+});
 
 oneside.get('/', (req, res) => {
-    oneside.send(res, "home.html", {
-        username: "Steve"
+  app
+    .render('home', res)
+    .ejs({
+      message: 'Hello world !',
     })
-})
+    .send();
+});
 
-oneside.listen()
+app.listen();
 ```
