@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { application } from 'express';
 import chalk from 'chalk';
 import portfinder from 'portfinder';
 import favicon from 'serve-favicon';
@@ -14,6 +14,7 @@ import socketIo from 'socket.io';
 import lineReader from 'line-reader';
 import progress from 'cli-progress';
 import colors from 'ansi-colors';
+import dns from 'dns';
 
 import { Settings } from './settings';
 import { resolve } from 'path';
@@ -26,6 +27,9 @@ export class Server {
     favicon: '',
     baseFile: 'index.ejs',
     showCompiling: false,
+    useLocalIp: false,
+    ejsCache: true,
+    publicPaths: [],
     paths: {
       views: './views',
       sources: './src',
@@ -49,6 +53,10 @@ export class Server {
       this.io = require('socket.io')(this.server);
       console.log(chalk.green(`> Dev mode activated`));
     }
+    this.settings.publicPaths.forEach((pblPath) => {
+      const route = resolve(pblPath).replace(process.cwd(), '');
+      app.use(route, express.static(pblPath));
+    });
   }
   set(name: string, value: string) {
     this.app.set(name, value);
@@ -94,49 +102,70 @@ export class Server {
             port: this.settings.port,
           },
           (err, port) => {
-            if (err) return console.log(chalk.red('- All ports seem to be busy !', err));
+            if (err) {
+              console.log(chalk.red('- All ports seem to be busy !', err));
+              process.exit(1);
+            }
             if (port !== this.settings.port)
               console.error(chalk.yellow(`> Port ${this.settings.port} is already in use`));
-            if (this.dev) {
-              if (this.io) {
-                this.io.on('connection', (socket) => {
-                  socket.emit('connected_live');
-                });
-                chokidar
-                  .watch(process.cwd(), {
-                    ignoreInitial: true,
-                    ignored: /(^|[\/\\])\../,
-                    persistent: true,
-                  })
-                  .on('all', (event, path) => {
-                    if (
-                      path.includes(resolve(this.settings.paths.sources)) ||
-                      path.includes(resolve(this.settings.paths.views)) ||
-                      path.includes(resolve(this.settings.paths.components)) ||
-                      path === join(process.cwd(), this.settings.baseFile)
-                    ) {
-                      compile(
-                        this.settings.paths.views,
-                        getBaseHtml(this.settings.baseFile),
-                        this.settings.showCompiling,
-                        true,
-                        () => {
-                          this.io?.sockets.emit('reload_live');
-                        },
-                      );
-                    }
-                  });
+            dns.lookup(require('os').hostname(), (err, add) => {
+              if (err && this.settings.useLocalIp) {
+                console.log(chalk.red('- Unable to retrieve local IP address !\n', err));
+                process.exit(1);
               }
-              this.server.listen(port, this.settings.address, () => {
-                console.log(chalk.green(`> Server OneSide started on http://${this.settings.address}:${port} !`));
-                if (callback) callback();
-              });
-            } else {
-              this.server.listen(port, this.settings.address, () => {
-                console.log(chalk.green(`> Server OneSide started on http://${this.settings.address}:${port} !`));
-                if (callback) callback();
-              });
-            }
+              if (this.dev) {
+                if (this.io) {
+                  this.io.on('connection', (socket) => {
+                    socket.emit('connected_live');
+                  });
+                  chokidar
+                    .watch(process.cwd(), {
+                      ignoreInitial: true,
+                      ignored: /(^|[\/\\])\../,
+                      persistent: true,
+                    })
+                    .on('all', (event, path) => {
+                      if (
+                        path.includes(resolve(this.settings.paths.sources)) ||
+                        path.includes(resolve(this.settings.paths.views)) ||
+                        path.includes(resolve(this.settings.paths.components)) ||
+                        path === join(process.cwd(), this.settings.baseFile)
+                      ) {
+                        compile(
+                          this.settings.paths.views,
+                          getBaseHtml(this.settings.baseFile),
+                          this.settings.showCompiling,
+                          true,
+                          () => {
+                            this.io?.sockets.emit('reload_live');
+                          },
+                        );
+                      }
+                    });
+                }
+                this.server.listen(port, this.settings.useLocalIp ? add : this.settings.address, () => {
+                  console.log(
+                    chalk.green(
+                      `> Server OneSide started on http://${
+                        this.settings.useLocalIp ? add : this.settings.address
+                      }:${port} !`,
+                    ),
+                  );
+                  if (callback) callback();
+                });
+              } else {
+                this.server.listen(port, this.settings.useLocalIp ? add : this.settings.address, () => {
+                  console.log(
+                    chalk.green(
+                      `> Server OneSide started on http://${
+                        this.settings.useLocalIp ? add : this.settings.address
+                      }:${port} !`,
+                    ),
+                  );
+                  if (callback) callback();
+                });
+              }
+            });
           },
         );
       },

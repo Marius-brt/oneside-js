@@ -10,12 +10,14 @@ export class Render {
     file: '',
     global: {},
     data: {},
+    useCache: true,
+    dev: false,
   };
-  private dev: boolean;
-  constructor(file: string, res: Response, dev: boolean) {
+  constructor(file: string, res: Response, dev: boolean, useCache: boolean) {
     this.settings.file = file.replace('.ejs', '');
     this.res = res;
-    this.dev = dev;
+    this.settings.dev = dev;
+    this.settings.useCache = useCache;
   }
   status(code: number): Render {
     this.settings.status = code;
@@ -33,7 +35,7 @@ export class Render {
     ejs.renderFile(
       `${resolve('./compiled')}/${this.settings.file}.ejs`,
       this.settings.data,
-      { cache: !this.dev },
+      { cache: !this.settings.dev && this.settings.useCache },
       (err, html) => {
         if (err) {
           console.log(chalk.red('!> Failed to render page !\n', err));

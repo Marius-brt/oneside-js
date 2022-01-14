@@ -4,6 +4,9 @@ export interface Settings {
   favicon: string;
   baseFile: string;
   showCompiling: boolean;
+  ejsCache: boolean;
+  useLocalIp: boolean;
+  publicPaths: string[];
   paths: {
     views: string;
     sources: string;
