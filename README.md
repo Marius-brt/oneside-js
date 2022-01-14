@@ -4,7 +4,7 @@
     </a>
     <p style="font-size: 20px; font-weight: 600; margin-bottom: 30px">OneSide</p>
     <img alt="npm" src="https://img.shields.io/npm/v/oneside">
-    <img alt="npm" src="https://img.shields.io/npm/dw/oneside">
+    <img alt="npm" src="https://img.shields.io/npm/dt/oneside">
     <img alt="npm bundle size" src="https://img.shields.io/bundlephobia/min/oneside">
     <img alt="AppVeyor" src="https://ci.appveyor.com/api/projects/status/iy89vgvvyn1ka6g5?svg=true">
 </div>
