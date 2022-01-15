@@ -48,15 +48,20 @@ export class Server {
       process.exit(1);
     }
     if (this.settings.favicon !== '') app.use(favicon(resolve(this.settings.favicon)));
-    app.use(normalize(this.settings.paths.sources), express.static(resolve(this.settings.paths.sources)));
+    if (this.settings.paths.sources !== '')
+      app.use(normalize(this.settings.paths.sources), express.static(resolve(this.settings.paths.sources)));
     this.server = new http.Server(app);
     if (this.dev) {
       this.io = require('socket.io')(this.server);
       console.log(chalk.green(`> Dev mode activated`));
     }
     this.settings.publicPaths.forEach((pblPath) => {
-      const route = resolve(pblPath).replace(process.cwd(), '');
-      app.use(normalize(route), express.static(resolve(pblPath)));
+      if (typeof pblPath === 'string') {
+        const route = resolve(pblPath).replace(process.cwd(), '');
+        app.use(normalize(route), express.static(resolve(pblPath)));
+      } else {
+        app.use(pblPath.path, express.static(resolve(pblPath.path)));
+      }
     });
   }
   set(name: string, value: string) {
@@ -126,23 +131,25 @@ export class Server {
                       persistent: true,
                     })
                     .on('all', (event, path) => {
-                      if (
-                        path.includes(resolve(this.settings.paths.sources)) ||
-                        path.includes(resolve(this.settings.paths.views)) ||
-                        path.includes(resolve(this.settings.paths.components)) ||
-                        path === join(process.cwd(), this.settings.baseFile)
-                      ) {
-                        compile(
-                          this.settings.paths.views,
-                          getBaseHtml(this.settings.baseFile),
-                          this.settings.showCompiling,
-                          true,
-                          () => {
-                            this.io?.sockets.emit('reload_live');
-                          },
-                        );
-                      } else {
-                        if (process.send) process.send('restart');
+                      if (!path.includes(resolve('./compiled'))) {
+                        if (
+                          path.includes(resolve(this.settings.paths.sources)) ||
+                          path.includes(resolve(this.settings.paths.views)) ||
+                          path.includes(resolve(this.settings.paths.components)) ||
+                          path === join(process.cwd(), this.settings.baseFile)
+                        ) {
+                          compile(
+                            this.settings.paths.views,
+                            getBaseHtml(this.settings.baseFile),
+                            this.settings.showCompiling,
+                            true,
+                            () => {
+                              this.io?.sockets.emit('reload_live');
+                            },
+                          );
+                        } else {
+                          if (process.send) process.send('restart');
+                        }
                       }
                     });
                 }
