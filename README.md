@@ -14,6 +14,8 @@
 
 OneSide is a web server that allows you to create a website with NodeJs. With OneSide, you create the backend and the frontend of your application in a single project. OneSide uses EJS for pre-rendered pages and Express for the Http server.
 
+[OneSide Cli](https://github.com/Marius-brt/OneSide-Cli) repo.
+
 ## Features
 
 - 📨 Fast thanks to pre-compiled and cached pages
