@@ -7,7 +7,7 @@
     <img alt="npm" src="https://img.shields.io/npm/v/oneside">
     <img alt="npm" src="https://img.shields.io/npm/dt/oneside">
     <img alt="npm bundle size" src="https://img.shields.io/bundlephobia/min/oneside">
-    <img alt="AppVeyor" src="https://img.shields.io/appveyor/build/Marius-brt/oneside-js">
+    <img alt="AppVeyor" src="https://ci.appveyor.com/api/projects/status/iy89vgvvyn1ka6g5?svg=true">
 </div>
 
 <br>
