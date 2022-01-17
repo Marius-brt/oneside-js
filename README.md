@@ -59,7 +59,7 @@ const app = oneside.init({
   port: 5050,
 });
 
-oneside.get('/', (req, res) => {
+app.get('/', (req, res) => {
   oneside
     .render('home', res)
     .ejs({
