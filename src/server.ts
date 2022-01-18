@@ -1,4 +1,5 @@
-import express, { application } from 'express';
+import express from 'express';
+import merge from 'deepmerge';
 import chalk from 'chalk';
 import portfinder from 'portfinder';
 import favicon from 'serve-favicon';
@@ -23,6 +24,7 @@ import { resolve } from 'path';
 export class Server {
   private app: express.Express;
   private settings: Settings = {
+    ignores: [],
     port: 4050,
     address: 'localhost',
     favicon: '',
@@ -31,9 +33,10 @@ export class Server {
     useLocalIp: false,
     ejsCache: true,
     publicPaths: [],
+    printPublicUri: true,
     paths: {
       views: './views',
-      sources: './src',
+      public: './public',
       components: './components',
     },
   };
@@ -42,14 +45,14 @@ export class Server {
   private dev: boolean = process.argv.length > 2 && process.argv[2].toLowerCase() === 'dev';
   constructor(app: express.Express, settings: Partial<Settings>) {
     this.app = app;
-    this.settings = { ...this.settings, ...settings };
+    this.settings = merge(this.settings, settings);
     if (this.settings.baseFile === '' || !existsSync(join(process.cwd(), this.settings.baseFile))) {
       console.log(chalk.red(`!> Base file ${this.settings.baseFile} not found !\n`));
       process.exit(1);
     }
     if (this.settings.favicon !== '') app.use(favicon(resolve(this.settings.favicon)));
-    if (this.settings.paths.sources !== '')
-      app.use(normalize(this.settings.paths.sources), express.static(resolve(this.settings.paths.sources)));
+    if (this.settings.paths.public !== '')
+      app.use(normalize(this.settings.paths.public), express.static(resolve(this.settings.paths.public)));
     this.server = new http.Server(app);
     if (this.dev) {
       this.io = require('socket.io')(this.server);
@@ -124,32 +127,36 @@ export class Server {
                   this.io.on('connection', (socket) => {
                     socket.emit('connected_live');
                   });
+                  this.settings.ignores.push('./node_modules');
+                  this.settings.ignores.push('./compiled');
+                  this.settings.ignores.forEach((pth, i) => {
+                    if (typeof pth === 'string') this.settings.ignores[i] = resolve(pth);
+                  });
+                  this.settings.ignores.push(/(^|[\/\\])\../);
                   chokidar
                     .watch(process.cwd(), {
                       ignoreInitial: true,
-                      ignored: /(^|[\/\\])\../,
+                      ignored: this.settings.ignores,
                       persistent: true,
                     })
                     .on('all', (event, path) => {
-                      if (!path.includes(resolve('./compiled'))) {
-                        if (
-                          path.includes(resolve(this.settings.paths.sources)) ||
-                          path.includes(resolve(this.settings.paths.views)) ||
-                          path.includes(resolve(this.settings.paths.components)) ||
-                          path === join(process.cwd(), this.settings.baseFile)
-                        ) {
-                          compile(
-                            this.settings.paths.views,
-                            getBaseHtml(this.settings.baseFile),
-                            this.settings.showCompiling,
-                            true,
-                            () => {
-                              this.io?.sockets.emit('reload_live');
-                            },
-                          );
-                        } else {
-                          if (process.send) process.send('restart');
-                        }
+                      if (
+                        path.includes(resolve(this.settings.paths.public)) ||
+                        path.includes(resolve(this.settings.paths.views)) ||
+                        path.includes(resolve(this.settings.paths.components)) ||
+                        path === join(process.cwd(), this.settings.baseFile)
+                      ) {
+                        compile(
+                          this.settings.paths.views,
+                          getBaseHtml(this.settings.baseFile),
+                          this.settings.showCompiling,
+                          true,
+                          () => {
+                            this.io?.sockets.emit('reload_live');
+                          },
+                        );
+                      } else {
+                        if (process.send) process.send('restart');
                       }
                     });
                 }
@@ -161,6 +168,14 @@ export class Server {
                       }:${port} !`,
                     ),
                   );
+                  if (this.settings.printPublicUri)
+                    console.log(
+                      chalk.gray(
+                        `[Info] Public folder Url: http://${
+                          this.settings.useLocalIp ? add : this.settings.address
+                        }:${port}${normalize(this.settings.paths.public)}`,
+                      ),
+                    );
                   if (process.argv[3] === 'first') {
                     open(`http://${this.settings.useLocalIp ? add : this.settings.address}:${port}`);
                   } else {
@@ -177,6 +192,14 @@ export class Server {
                       }:${port} !`,
                     ),
                   );
+                  if (this.settings.printPublicUri)
+                    console.log(
+                      chalk.gray(
+                        `[Info] Public folder Url: http://${
+                          this.settings.useLocalIp ? add : this.settings.address
+                        }:${port}${normalize(this.settings.paths.public)}`,
+                      ),
+                    );
                   if (callback) callback();
                 });
               }
@@ -285,7 +308,6 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
                 }
                 pageHtml = $2.html();
                 const htmlSplt = splitOnce(pageHtml, '<script');
-                if (htmlSplt.length > 1) $('body').append(htmlSplt[1]);
                 const body = $('body').children();
                 if (body.length > 0) {
                   let found = false;
@@ -298,6 +320,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
                 } else {
                   $('body').prepend(htmlSplt[0] + '$GLOBAL$');
                 }
+                if (htmlSplt.length > 1) $('body').append(htmlSplt[1]);
               }
               if (dev) {
                 if (!baseHtml.includes('socket.io/socket.io.js')) {

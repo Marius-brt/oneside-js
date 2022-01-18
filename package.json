@@ -1,6 +1,6 @@
 {
   "name": "oneside",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "description": "OneSide is a HTTP Node Server for websites.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -47,6 +47,7 @@
     "chokidar": "^3.5.2",
     "cli-progress": "^3.10.0",
     "cookie-parser": "^1.4.6",
+    "deepmerge": "^4.2.2",
     "ejs": "^3.1.6",
     "express": "^4.17.2",
     "figlet": "^1.5.2",

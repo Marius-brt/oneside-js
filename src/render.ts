@@ -39,7 +39,22 @@ export class Render {
       (err, html) => {
         if (err) {
           console.log(chalk.red('!> Failed to render page !\n', err));
-          return this.res.status(500).send('Failed to render page !');
+          if (this.settings.dev)
+            return this.res.status(500)
+              .send(`<p>Failed to render page !</p><script src="/socket.io/socket.io.js"></script>
+				<script>
+				const socket = io();
+				let live_s_connected = false;
+				socket.on('connected_live', () => {
+					if(live_s_connected) location.reload()
+					live_s_connected = true;
+					console.log("Connected to OneSide Live Server !")
+				})
+				socket.on('reload_live', () => {
+					location.reload()
+				})
+				</script>`);
+          else return this.res.status(500).send('Failed to render page !');
         }
         if (Object.keys(this.settings.global).length > 0)
           html = html.replace('$GLOBAL$', `<script>const global = ${JSON.stringify(this.settings.global)}</script>`);

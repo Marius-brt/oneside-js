@@ -35,6 +35,13 @@ export interface Settings {
    */
   showCompiling: boolean;
   /**
+   * Print public folder Uri in console on startup.
+   *
+   * @type { boolean }
+   * @default true
+   */
+  printPublicUri: boolean;
+  /**
    * Enable Ejs Cache. Ejs Cache is always disabled in Dev mode.
    *
    * @type { boolean }
@@ -48,6 +55,13 @@ export interface Settings {
    * @default false
    */
   useLocalIp: boolean;
+  /**
+   * Files or folders that the Live Server should ignore.
+   *
+   * @type { (string | RegExp)[] }
+   * @default []
+   */
+  ignores: (string | RegExp)[];
   /**
    * Public folders. By default, the paths.sources is public if is path is not equal to ''.
    *
@@ -75,7 +89,7 @@ export interface Settings {
      * @type { string }
      * @default './src'
      */
-    sources: string;
+    public: string;
     /**
      * Path of your components.
      *
