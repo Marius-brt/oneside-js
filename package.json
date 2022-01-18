@@ -1,6 +1,6 @@
 {
   "name": "oneside",
-  "version": "2.1.0",
+  "version": "2.1.2",
   "description": "OneSide is a HTTP Node Server for websites.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
