@@ -12,7 +12,7 @@
 
 <br>
 
-> Documentation on the [Github](https://github.com/Marius-brt/oneside-js)
+> Documentation on the [Github](https://github.com/Marius-brt/oneside-js/wiki)
 
 OneSide is a web server that allows you to create pre-compiled dynamic website with NodeJs. With OneSide, you create the backend and the frontend of your application in a single project. OneSide uses EJS for pre-rendered pages and Express for the Http server.
 
