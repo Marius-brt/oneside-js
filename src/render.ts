@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import ejs from 'ejs';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 import chalk from 'chalk';
+import { existsSync } from 'fs-extra';
 
 export class Render {
   private res: Response;
@@ -32,35 +33,35 @@ export class Render {
     return this;
   }
   send() {
-    ejs.renderFile(
-      `${resolve('./compiled')}/${this.settings.file}.ejs`,
-      this.settings.data,
-      { cache: !this.settings.dev && this.settings.useCache },
-      (err, html) => {
+    const pth = resolve(join('./compiled', `${this.settings.file}.ejs`));
+    if (!existsSync(pth)) {
+      this.res.send(`File ${join('./compiled', `${this.settings.file}.ejs`)} doesnt exist`);
+    } else {
+      ejs.renderFile(pth, this.settings.data, { cache: !this.settings.dev && this.settings.useCache }, (err, html) => {
         if (err) {
           console.log(chalk.red('!> Failed to render page !\n', err));
           if (this.settings.dev)
             return this.res.status(500)
               .send(`<p>Failed to render page !</p><script src="/socket.io/socket.io.js"></script>
-				<script>
-				const socket = io();
-				let live_s_connected = false;
-				socket.on('connected_live', () => {
-					if(live_s_connected) location.reload()
-					live_s_connected = true;
-					console.log("Connected to OneSide Live Server !")
-				})
-				socket.on('reload_live', () => {
-					location.reload()
-				})
-				</script>`);
+					  <script>
+					  const socket = io();
+					  let live_s_connected = false;
+					  socket.on('connected_live', () => {
+						  if(live_s_connected) location.reload()
+						  live_s_connected = true;
+						  console.log("Connected to OneSide Live Server !")
+					  })
+					  socket.on('reload_live', () => {
+						  location.reload()
+					  })
+					  </script>`);
           else return this.res.status(500).send('Failed to render page !');
         }
         if (Object.keys(this.settings.global).length > 0)
           html = html.replace('$GLOBAL$', `<script>const global = ${JSON.stringify(this.settings.global)}</script>`);
         else html = html.replace('$GLOBAL$', '');
         this.res.status(this.settings.status).send(html);
-      },
-    );
+      });
+    }
   }
 }
