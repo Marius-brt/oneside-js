@@ -5,7 +5,7 @@ import portfinder from 'portfinder';
 import favicon from 'serve-favicon';
 import cheerio from 'cheerio';
 import { existsSync, readFileSync, mkdirSync, mkdir, writeFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, basename } from 'path';
 import { emptyDirSync } from 'fs-extra';
 import glob from 'tiny-glob';
 import { minify } from 'html-minifier';
@@ -252,7 +252,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
       for await (const el of views) {
         pageId++;
         if (bar) bar.update(pageId);
-        const splt = el.split('\\');
+        const splt = el.replace(/\\/g, '/').split('/');
         splt.shift();
         const pth = './compiled/' + splt.join('/');
         mkdir(dirname(pth), { recursive: true }, (err) => {
@@ -261,9 +261,9 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
             process.exit(1);
           }
           const $ = cheerio.load(baseHtml);
-          const splt2 = el.split('\\');
+          const splt2 = el.replace(/\\/g, '/').split('/');
           splt2.shift();
-          const pth2 = pages + '/' + splt2.join('/');
+          const pth2 = resolve(join(pages, splt2.join('/')));
           const lines: string[] = [];
           const fileTags: { name: string; value: string }[] = [];
           const tags: string[] = ['title', 'description', 'keywords', 'author', 'viewport'];
@@ -352,7 +352,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
                 }
               }
               writeFileSync(
-                pth,
+                resolve(pth),
                 unescapeHTML(
                   minify($.html(), {
                     removeComments: true,
