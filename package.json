@@ -12,7 +12,7 @@
   "files": [
     "dist/**/*"
   ],
-  "author": "",
+  "author": "marius.brt",
   "license": "ISC",
   "devDependencies": {
     "@types/cli-progress": "^3.9.2",
@@ -46,5 +46,15 @@
     "socket.io": "^4.4.1",
     "tiny-glob": "^0.2.9"
   },
-  "description": ""
+  "description": "OneSide is a HTTP Node Server for websites.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Marius-brt/oneside-js"
+  },
+  "keywords": [
+    "HTTP",
+    "Server",
+    "Render",
+    "Ejs"
+  ]
 }
