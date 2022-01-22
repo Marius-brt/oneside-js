@@ -342,7 +342,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
         const pth = './compiled/' + splt.join('/');
         mkdir(dirname(pth), { recursive: true }, (err) => {
           if (err) print('error', 'Failed to compile !', true);
-          const $ = cheerio.load(baseHtml);
+          let $ = cheerio.load(baseHtml);
           const splt2 = el.replace(/\\/g, '/').split('/');
           splt2.shift();
           const pth2 = resolve(join(pages, splt2.join('/')));
@@ -389,21 +389,25 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
                 pageHtml = $2.html();
                 const htmlSplt = splitOnce(pageHtml, '<script');
                 const body = $('body').children();
-                if (body.length > 0) {
-                  let found = false;
-                  for (let i = body.length - 1; i >= 0; i--) {
-                    if (!found && ($(body[i])[0].name !== 'script' || i === 0)) {
-                      found = true;
-                      $(body[i]).after(htmlSplt[0] + '$GLOBAL$');
-                    }
-                  }
+                if (baseHtml.includes(':page:')) {
+                  $ = cheerio.load($.html().replace(':page:', htmlSplt[0]));
                 } else {
-                  $('body').prepend(htmlSplt[0] + '$GLOBAL$');
+                  if (body.length > 0) {
+                    let found = false;
+                    for (let i = body.length - 1; i >= 0; i--) {
+                      if (!found && ($(body[i])[0].name !== 'script' || i === 0)) {
+                        found = true;
+                        $(body[i]).after(htmlSplt[0] + '$GLOBAL$');
+                      }
+                    }
+                  } else {
+                    $('body').prepend(htmlSplt[0] + '$GLOBAL$');
+                  }
                 }
                 if (htmlSplt.length > 1) $('body').append(htmlSplt[1]);
               }
               if (dev) {
-                if (!baseHtml.includes('socket.io/socket.io.js')) {
+                if (!$.html().includes('socket.io/socket.io.js')) {
                   $('body').append(`<script src="/socket.io/socket.io.js"></script>
 						  <script>
 							const socket = io();
