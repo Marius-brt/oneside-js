@@ -1,7 +1,7 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http';
 import merge from 'deepmerge';
 import { existsSync, mkdirSync, mkdir, writeFileSync, readFileSync, createReadStream } from 'fs';
-import { resolve, dirname, join, basename } from 'path';
+import path, { resolve, dirname, join, basename } from 'path';
 import progress from 'cli-progress';
 import { emptyDirSync } from 'fs-extra';
 import colors from 'ansi-colors';
@@ -122,6 +122,12 @@ export interface AppSettings {
      * @default './views'
      */
     views: string;
+    /**
+     * Routes folder
+     * @type { string }
+     * @default './routes'
+     */
+    routes: string;
   };
 }
 
@@ -146,6 +152,7 @@ export class Application extends Router {
       views: './views',
       public: './public',
       components: './components',
+      routes: './routes',
     },
   };
   private notFoundEndpoint: IMiddleware | undefined;
@@ -319,14 +326,27 @@ export class Application extends Router {
 
   use(...args: [path: string, middleware: IMiddleware | Router] | [middleware: IMiddleware | Router]) {
     if (typeof args[0] === 'string') {
-      if (args[1] !== undefined)
+      if (args[1] !== undefined) {
         if (args[1] instanceof Router) {
           for (const [key, value] of Object.entries(args[1].endpoints)) {
             if (!this.endpoints[key]) this.endpoints[key] = [];
-            this.endpoints[key].push(...value);
+            value.forEach((val) => {
+              if (typeof args[0] === 'string') {
+                val.path = args[0] + '/' + val.path;
+                val.path = val.path
+                  .split('/')
+                  .filter((el) => el !== '')
+                  .join('/');
+                if (val.path === '') val.path = '/';
+                if (!val.path.startsWith('/')) val.path = '/' + val.path;
+              }
+              this.endpoints[key].push(val);
+            });
           }
         } else this.middlewares.push(args[1]);
-      else print('error', 'Middleware or Router undefined !', true);
+      } else {
+        print('error', 'Middleware or Router undefined !', true);
+      }
     } else {
       if (args[0] instanceof Router) {
         for (const [key, value] of Object.entries(args[0].endpoints)) {
@@ -338,96 +358,119 @@ export class Application extends Router {
   }
 
   listen(callback?: () => void) {
-    compile(
-      this.settings.paths.views,
-      getBaseHtml(this.settings.baseFile),
-      this.settings.showCompiling,
-      this.dev,
-      () => {
-        portfinder.getPort(
-          {
-            port: this.settings.port,
-          },
-          (err, port) => {
-            if (err) print('error', 'All ports seem to be busy !', true);
-            if (port !== this.settings.port) print('info', `Port ${this.settings.port} is already in use`);
-            dns.lookup(hostname(), (dnsErr, add) => {
-              if (dnsErr && this.settings.useLocalIp)
-                print('error', `Unable to retrieve local IP address !\n${dnsErr}`, true);
-              if (this.settings.useLocalIp) this.settings.address = add;
-              if (this.dev) {
-                if (this.io) {
-                  this.io.on('connection', (socket) => {
-                    socket.emit('connected_live');
-                  });
-                  this.settings.ignores.push('./node_modules');
-                  this.settings.ignores.push('./compiled');
-                  this.settings.ignores.forEach((pth, i) => {
-                    if (typeof pth === 'string') this.settings.ignores[i] = resolve(pth);
-                  });
-                  this.settings.ignores.push(/(^|[\\])\../);
-                  chokidar
-                    .watch(process.cwd(), {
-                      ignoreInitial: true,
-                      ignored: this.settings.ignores,
-                      persistent: true,
-                    })
-                    .on('all', (event, path) => {
-                      if (
-                        path.includes(resolve(this.settings.paths.public)) ||
-                        path.includes(resolve(this.settings.paths.views)) ||
-                        path.includes(resolve(this.settings.paths.components)) ||
-                        path === join(process.cwd(), this.settings.baseFile) ||
-                        this.settings.reloadPaths.some((el) => path.includes(resolve(el)))
-                      ) {
-                        compile(
-                          this.settings.paths.views,
-                          getBaseHtml(this.settings.baseFile),
-                          this.settings.showCompiling,
-                          true,
-                          () => {
-                            this.io?.sockets.emit('reload_live');
-                          },
+    const nmlz = path.normalize(this.settings.paths.routes.replace(/ /g, '-').toLocaleLowerCase());
+    glob(`${this.settings.paths.routes}/**/*.js`)
+      .then((files) => {
+        files.forEach(async (file) => {
+          const fl = file.replace(/ /g, '-').toLocaleLowerCase().replace(nmlz, '').replace(/\\/g, '/').split('/');
+          if (fl[fl.length - 1] === 'index.js') fl.pop();
+          let endpoint = '';
+          if (fl.length === 0) endpoint = '/';
+          else endpoint = fl.join('/').replace('.js', '') + '/';
+          import(
+            resolve(
+              file.replace(path.normalize(this.settings.paths.routes), this.settings.paths.routes).replace(/\\/g, '/'),
+            )
+          ).then((route) => {
+            this.use(endpoint, route.default);
+          });
+        });
+      })
+      .catch((err) => {
+        print('error', err, true);
+      })
+      .finally(() => {
+        compile(
+          this.settings.paths.views,
+          getBaseHtml(this.settings.baseFile),
+          this.settings.showCompiling,
+          this.dev,
+          () => {
+            portfinder.getPort(
+              {
+                port: this.settings.port,
+              },
+              (err, port) => {
+                if (err) print('error', 'All ports seem to be busy !', true);
+                if (port !== this.settings.port) print('info', `Port ${this.settings.port} is already in use`);
+                dns.lookup(hostname(), (dnsErr, add) => {
+                  if (dnsErr && this.settings.useLocalIp)
+                    print('error', `Unable to retrieve local IP address !\n${dnsErr}`, true);
+                  if (this.settings.useLocalIp) this.settings.address = add;
+                  if (this.dev) {
+                    if (this.io) {
+                      this.io.on('connection', (socket) => {
+                        socket.emit('connected_live');
+                      });
+                      this.settings.ignores.push('./node_modules');
+                      this.settings.ignores.push('./compiled');
+                      this.settings.ignores.forEach((pth, i) => {
+                        if (typeof pth === 'string') this.settings.ignores[i] = resolve(pth);
+                      });
+                      this.settings.ignores.push(/(^|[\\])\../);
+                      chokidar
+                        .watch(process.cwd(), {
+                          ignoreInitial: true,
+                          ignored: this.settings.ignores,
+                          persistent: true,
+                        })
+                        .on('all', (event, path) => {
+                          if (
+                            path.includes(resolve(this.settings.paths.public)) ||
+                            path.includes(resolve(this.settings.paths.views)) ||
+                            path.includes(resolve(this.settings.paths.components)) ||
+                            path === join(process.cwd(), this.settings.baseFile) ||
+                            this.settings.reloadPaths.some((el) => path.includes(resolve(el)))
+                          ) {
+                            compile(
+                              this.settings.paths.views,
+                              getBaseHtml(this.settings.baseFile),
+                              this.settings.showCompiling,
+                              true,
+                              () => {
+                                this.io?.sockets.emit('reload_live');
+                              },
+                            );
+                          } else {
+                            if (process.send) process.send('restart');
+                          }
+                        });
+                    }
+                    this.server.listen(port, this.settings.address, () => {
+                      print('log', `Server OneSide started on http://${this.settings.address}:${port} !`);
+                      if (this.settings.printPublicUri)
+                        print(
+                          'gray',
+                          `Public folder Url: http://${this.settings.address}:${port}${normalize(
+                            this.settings.paths.public,
+                          )}`,
                         );
+                      if (process.argv[3] === 'first') {
+                        open(`http://${this.settings.address}:${port}`);
                       } else {
-                        if (process.send) process.send('restart');
+                        this.io?.sockets.emit('reload_live');
                       }
+                      if (callback) callback();
                     });
-                }
-                this.server.listen(port, this.settings.address, () => {
-                  print('log', `Server OneSide started on http://${this.settings.address}:${port} !`);
-                  if (this.settings.printPublicUri)
-                    print(
-                      'gray',
-                      `Public folder Url: http://${this.settings.address}:${port}${normalize(
-                        this.settings.paths.public,
-                      )}`,
-                    );
-                  if (process.argv[3] === 'first') {
-                    open(`http://${this.settings.address}:${port}`);
                   } else {
-                    this.io?.sockets.emit('reload_live');
+                    this.server.listen(port, this.settings.address, () => {
+                      print('log', `Server OneSide started on http://${this.settings.address}:${port} !`);
+                      if (this.settings.printPublicUri)
+                        print(
+                          'gray',
+                          `Public folder Url: http://${this.settings.address}:${port}${normalize(
+                            this.settings.paths.public,
+                          )}`,
+                        );
+                      if (callback) callback();
+                    });
                   }
-                  if (callback) callback();
                 });
-              } else {
-                this.server.listen(port, this.settings.address, () => {
-                  print('log', `Server OneSide started on http://${this.settings.address}:${port} !`);
-                  if (this.settings.printPublicUri)
-                    print(
-                      'gray',
-                      `Public folder Url: http://${this.settings.address}:${port}${normalize(
-                        this.settings.paths.public,
-                      )}`,
-                    );
-                  if (callback) callback();
-                });
-              }
-            });
+              },
+            );
           },
         );
-      },
-    );
+      });
   }
 }
 
