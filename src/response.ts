@@ -1,7 +1,8 @@
 import { ServerResponse } from 'http';
 import merge from 'deepmerge';
 import ejs from 'ejs';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
+import { existsSync } from 'fs';
 import { STATUS_CODES } from 'http';
 
 import { print } from './utils';
@@ -60,20 +61,33 @@ export class Response {
     this.json(msg);
   }
 
+  redirect(url: string) {
+    if (!this.res.writableEnded)
+      this.res
+        .writeHead(301, {
+          Location: url,
+        })
+        .end();
+  }
+
   render(page: string) {
     if (!this.res.writableEnded) {
       this.settings.file = page.replace('.ejs', '');
-      this.res.setHeader('Content-Type', 'text/html');
-      ejs.renderFile(
-        `${resolve('./compiled')}/${this.settings.file}.ejs`,
-        this.settings.ejs,
-        { cache: !this.settings.dev && this.settings.useCache },
-        (err, html) => {
+      const pth = resolve(join('./compiled', `${this.settings.file}.ejs`));
+      if (!existsSync(pth)) {
+        this.status(404).send(`File ${join('./compiled', `${this.settings.file}.ejs`)} doesnt exist`);
+        if (this.settings.dev) {
+          print('error', `File ${pth} not found !`);
+        }
+      } else {
+        this.res.setHeader('Content-Type', 'text/html');
+        ejs.renderFile(pth, this.settings.ejs, { cache: !this.settings.dev && this.settings.useCache }, (err, html) => {
           if (err) {
-            print('failed', 'Failed to render page !');
+            print('failed', `Failed to render page !\n${err}`);
             this.res.statusCode = 500;
             if (this.settings.dev)
-              return this.res.end(`<p>Failed to render page !</p><script src="/socket.io/socket.io.js"></script>
+              return this.res
+                .end(`<p>Failed to render page !</p><div>${err}</div><script src="/socket.io/socket.io.js"></script>
 				  <script>
 				  const socket = io();
 				  let live_s_connected = false;
@@ -86,14 +100,14 @@ export class Response {
 					  location.reload()
 				  })
 				  </script>`);
-            else return this.res.end('<p>Failed to render page !</p>');
+            else return this.res.end(`<p>Failed to render page !</p>`);
           }
           if (Object.keys(this.settings.global).length > 0)
             html = html.replace('$GLOBAL$', `<script>const global = ${JSON.stringify(this.settings.global)}</script>`);
           else html = html.replace('$GLOBAL$', '');
           this.res.end(html);
-        },
-      );
+        });
+      }
     }
   }
 
