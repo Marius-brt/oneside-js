@@ -25,22 +25,102 @@ import { Response } from './response';
 import { Next } from './next';
 
 export interface AppSettings {
+  /**
+   * Port of the app
+   * @type { number }
+   * @default 5000
+   */
   port: number;
+  /**
+   * Address of the app
+   * @type { string }
+   * @default 'localhost'
+   */
   address: string;
+  /**
+   * Js variables that are added to all pages
+   * @type { object }
+   * @default {}
+   */
   global: object;
+  /**
+   * Path of the base file of the app that contain the head and the body
+   * @type { string }
+   * @default 'index.ejs'
+   */
   baseFile: string;
+  /**
+   * Favicon of the app
+   * @type { string }
+   * @default ''
+   */
   favicon: string;
+  /**
+   * Use local ip of the computer. Usefull for opening your website on your phone
+   * @type { boolean }
+   * @default false
+   */
   useLocalIp: boolean;
+  /**
+   * If true it will print in the prompt when OneSide compile your pages
+   * @type { boolean }
+   * @default true
+   */
   showCompiling: boolean;
+  /**
+   * Paths that the live server need to ignore. (node_modules, compiled folder, and dot files are ignored by default)
+   * @type { (string | RegExp)[] }
+   * @default []
+   */
   ignores: (string | RegExp)[];
+  /**
+   * Print the url of the public folder at startup
+   * @type { boolean }
+   * @default true
+   */
   printPublicUri: boolean;
+  /**
+   * Paths of public folders and files
+   * @type { string[] }
+   * @default []
+   */
   publicPaths: string[];
+  /**
+   * Paths where when they are edited the live server reload only the website and don't restart the all application
+   * @type { string[] }
+   * @default []
+   */
   reloadPaths: string[];
+  /**
+   * If true it will parse the cookies of the request
+   * @type { boolean }
+   * @default true
+   */
   parseCookies: boolean;
+  /**
+   * If true it will parse the body of the request (if its a JSON body it will parse it)
+   * @type { boolean }
+   * @default true
+   */
   parserBody: boolean;
   paths: {
+    /**
+     * Public folder where you put your images, css, etc..
+     * @type { string }
+     * @default './public'
+     */
     public: string;
+    /**
+     * Folder of your components
+     * @type { string }
+     * @default './components'
+     */
     components: string;
+    /**
+     * Folder of your pages
+     * @type { string }
+     * @default './views'
+     */
     views: string;
   };
 }
