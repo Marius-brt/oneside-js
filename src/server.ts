@@ -208,12 +208,12 @@ export class Application extends Router {
                       if (endpoint.middlewares.length === 1) {
                         endpoint.middlewares[0](request, response);
                       } else {
-                        const next = new Next(request, response, endpoint.middlewares);
+                        const next = new Next(request, response, endpoint.middlewares, this.notFoundEndpoint);
                         endpoint.middlewares[0](request, response, next);
                       }
                     } else {
                       const middlewares = this.middlewares.concat(endpoint.middlewares);
-                      const next = new Next(request, response, middlewares);
+                      const next = new Next(request, response, middlewares, this.notFoundEndpoint);
                       middlewares[0](request, response, next);
                     }
                   });
