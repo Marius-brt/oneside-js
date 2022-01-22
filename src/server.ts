@@ -148,6 +148,7 @@ export class Application extends Router {
       components: './components',
     },
   };
+  private notFoundEndpoint: IMiddleware | undefined;
   private io?: ioserver.Server;
   private dev: boolean = process.argv.length > 2 && process.argv[2].toLowerCase() === 'dev';
   constructor(settings: Partial<AppSettings>) {
@@ -193,7 +194,7 @@ export class Application extends Router {
                       hostname: req.headers.host || '',
                       method,
                       queries: url.parse(req.url || '', true).query,
-                      body: this.settings.parserBody ? parseBody(body) : null,
+                      body: this.settings.parserBody ? parseBody(body) : '',
                       cookies: this.settings.parseCookies ? parseCookies(req.headers.cookie || '') : {},
                     };
                     const response = new Response(res, {
@@ -221,19 +222,88 @@ export class Application extends Router {
             }
           }
           if (!found && !res.writableEnded) {
-            res.writeHead(404, {
-              'Content-Type': 'plain/text',
-            });
-            res.end(`Endpoint ${method.toUpperCase()} ${reqEndpoint} not found`);
+            if (this.notFoundEndpoint) {
+              const request: Request & { [k: string]: any } = {
+                params: {},
+                ip: req.socket.remoteAddress || '',
+                url: req.url || '',
+                endpoint: '',
+                hostname: req.headers.host || '',
+                method,
+                queries: url.parse(req.url || '', true).query,
+                body: '',
+                cookies: {},
+              };
+              const response = new Response(res, {
+                global: this.settings.global,
+                ejs: {},
+                file: '',
+                useCache: false,
+                dev: this.dev,
+              });
+              this.notFoundEndpoint(request, response, undefined);
+            } else {
+              res.writeHead(404, {
+                'Content-Type': 'text/html',
+              });
+              res.end(`<p>Endpoint ${method.toUpperCase()} ${reqEndpoint} not found</p>`);
+            }
           }
         } else {
-          res.writeHead(404, {
-            'Content-Type': 'plain/text',
-          });
-          res.end(`Endpoint ${method.toUpperCase()} ${reqEndpoint} not found`);
+          if (this.notFoundEndpoint) {
+            const request: Request & { [k: string]: any } = {
+              params: {},
+              ip: req.socket.remoteAddress || '',
+              url: req.url || '',
+              endpoint: '',
+              hostname: req.headers.host || '',
+              method,
+              queries: url.parse(req.url || '', true).query,
+              body: '',
+              cookies: {},
+            };
+            const response = new Response(res, {
+              global: this.settings.global,
+              ejs: {},
+              file: '',
+              useCache: false,
+              dev: this.dev,
+            });
+            this.notFoundEndpoint(request, response, undefined);
+          } else {
+            res.writeHead(404, {
+              'Content-Type': 'text/html',
+            });
+            res.end(`<p>Endpoint ${method.toUpperCase()} ${reqEndpoint} not found</p>`);
+          }
         }
       } else {
-        res.end();
+        if (this.notFoundEndpoint) {
+          const request: Request & { [k: string]: any } = {
+            params: {},
+            ip: req.socket.remoteAddress || '',
+            url: req.url || '',
+            endpoint: '',
+            hostname: req.headers.host || '',
+            method: method || '',
+            queries: url.parse(req.url || '', true).query,
+            body: '',
+            cookies: {},
+          };
+          const response = new Response(res, {
+            global: this.settings.global,
+            ejs: {},
+            file: '',
+            useCache: false,
+            dev: this.dev,
+          });
+          this.notFoundEndpoint(request, response, undefined);
+        } else {
+          res.writeHead(404, {
+            'Content-Type': 'text/html',
+          });
+          res.end(`<p>Endpoint ${method} ${reqEndpoint} not found</p>`);
+        }
       }
     });
 
@@ -241,6 +311,10 @@ export class Application extends Router {
       this.io = new ioserver.Server(this.server);
       print('info', 'Dev mode activated');
     }
+  }
+
+  notFound(callback: IMiddleware) {
+    this.notFoundEndpoint = callback;
   }
 
   use(...args: [path: string, middleware: IMiddleware | Router] | [middleware: IMiddleware | Router]) {

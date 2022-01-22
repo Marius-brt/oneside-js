@@ -74,20 +74,19 @@ export class Response {
     if (!this.res.writableEnded) {
       this.settings.file = page.replace('.ejs', '');
       const pth = resolve(join('./compiled', `${this.settings.file}.ejs`));
-      if (!existsSync(pth)) {
-        this.status(404).send(`File ${join('./compiled', `${this.settings.file}.ejs`)} doesnt exist`);
-        if (this.settings.dev) {
-          print('error', `File ${pth} not found !`);
-        }
-      } else {
-        this.res.setHeader('Content-Type', 'text/html');
-        ejs.renderFile(pth, this.settings.ejs, { cache: !this.settings.dev && this.settings.useCache }, (err, html) => {
-          if (err) {
-            print('failed', `Failed to render page !\n${err}`);
-            this.res.statusCode = 500;
-            if (this.settings.dev)
-              return this.res
-                .end(`<p>Failed to render page !</p><div>${err}</div><script src="/socket.io/socket.io.js"></script>
+      if (this.settings.dev && !existsSync(pth)) {
+        this.status(404).send(`File ${pth} doesnt exist`);
+        print('error', `File ${pth} not found !`);
+        return;
+      }
+      this.res.setHeader('Content-Type', 'text/html');
+      ejs.renderFile(pth, this.settings.ejs, { cache: !this.settings.dev && this.settings.useCache }, (err, html) => {
+        if (err) {
+          print('failed', `Failed to render page !\n${err}`);
+          this.res.statusCode = 500;
+          if (this.settings.dev)
+            return this.res
+              .end(`<p>Failed to render page !</p><div>${err}</div><script src="/socket.io/socket.io.js"></script>
 				  <script>
 				  const socket = io();
 				  let live_s_connected = false;
@@ -100,14 +99,13 @@ export class Response {
 					  location.reload()
 				  })
 				  </script>`);
-            else return this.res.end(`<p>Failed to render page !</p>`);
-          }
-          if (Object.keys(this.settings.global).length > 0)
-            html = html.replace('$GLOBAL$', `<script>const global = ${JSON.stringify(this.settings.global)}</script>`);
-          else html = html.replace('$GLOBAL$', '');
-          this.res.end(html);
-        });
-      }
+          else return this.res.end(`<p>Failed to render page !</p>`);
+        }
+        if (Object.keys(this.settings.global).length > 0)
+          html = html.replace('$GLOBAL$', `<script>const global = ${JSON.stringify(this.settings.global)}</script>`);
+        else html = html.replace('$GLOBAL$', '');
+        this.res.end(html);
+      });
     }
   }
 

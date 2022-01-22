@@ -7,7 +7,9 @@ export class Next {
   constructor(private req: Request, private res: Response, private middlewares: IMiddleware[]) {}
 
   ok() {
-    this.i++;
-    this.middlewares[this.i](this.req, this.res, this);
+    if (this.i + 2 < this.middlewares.length) {
+      this.i++;
+      this.middlewares[this.i](this.req, this.res, this);
+    }
   }
 }
