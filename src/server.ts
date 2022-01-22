@@ -35,6 +35,7 @@ export interface AppSettings {
   ignores: (string | RegExp)[];
   printPublicUri: boolean;
   publicPaths: string[];
+  reloadPaths: string[];
   parseCookies: boolean;
   parserBody: boolean;
   paths: {
@@ -57,6 +58,7 @@ export class Application extends Router {
     favicon: '',
     ignores: [],
     publicPaths: [],
+    reloadPaths: [],
     printPublicUri: true,
     parseCookies: true,
     parserBody: true,
@@ -221,7 +223,8 @@ export class Application extends Router {
                         path.includes(resolve(this.settings.paths.public)) ||
                         path.includes(resolve(this.settings.paths.views)) ||
                         path.includes(resolve(this.settings.paths.components)) ||
-                        path === join(process.cwd(), this.settings.baseFile)
+                        path === join(process.cwd(), this.settings.baseFile) ||
+                        this.settings.reloadPaths.some((el) => path.includes(resolve(el)))
                       ) {
                         compile(
                           this.settings.paths.views,
