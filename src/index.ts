@@ -1,25 +1,19 @@
-import express, { Response, Router } from 'express';
-import cookieParser from 'cookie-parser';
 import figlet, { Fonts } from 'figlet';
 import color from 'ansi-colors';
 import { get } from 'https';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-import { Settings } from './settings';
-import { Server } from './server';
-import { Render } from './render';
+import { Application, AppSettings } from './server';
+import { print } from './utils';
+import { Router } from './router';
 
-let useEjsCache = true;
-
-export function router(options?: express.RouterOptions): Router {
-  return Router(options);
+export function router(): Router {
+  return new Router();
 }
 
-export function render(file: string, res: Response): Render {
-  return new Render(file, res, process.argv.length > 2 && process.argv[2].toLowerCase() === 'dev', useEjsCache);
-}
-
-export function init(settings: Partial<Settings> = {}): Server {
-  if (settings.ejsCache !== undefined) useEjsCache = settings.ejsCache;
+export function init(settings: Partial<AppSettings> = {}): Application {
+  console.clear();
   const fonts: Fonts[] = ['Ghost', 'Sub-Zero', 'Delta Corps Priest 1', 'Dancing Font', 'DOS Rebel', 'ANSI Regular'];
   console.log(
     color.yellow(
@@ -34,24 +28,14 @@ export function init(settings: Partial<Settings> = {}): Server {
       data += chunk;
     });
     resp.on('end', () => {
-      const version = require('../package.json').version;
+      const version = JSON.parse(readFileSync(join(__dirname, '../package.json'), { encoding: 'utf-8' })).version;
       const latest = JSON.parse(data).version;
-      if (version !== latest) {
-        console.log(
-          color.cyan(
-            `?> New version of OneSide available ${version}->${latest}. Use the "npm i oneside@latest" command to install the latest version available.`,
-          ),
+      if (version !== latest)
+        print(
+          'info',
+          `New version of OneSide available ${version} (current) -> ${latest}. Use the "npm i oneside@latest" command to install the latest version available.`,
         );
-      }
     });
   });
-  const app = express();
-  app.use(express.json());
-  app.use(
-    express.urlencoded({
-      extended: true,
-    }),
-  );
-  app.use(cookieParser());
-  return new Server(app, settings);
+  return new Application(settings);
 }
