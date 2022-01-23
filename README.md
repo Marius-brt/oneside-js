@@ -71,5 +71,5 @@ app.get('/', (req, res) => {
 
 app.listen();
 ```
-
+<br>
 > If you like the project please start it on [Github](https://github.com/Marius-brt/oneside-js) ⭐. If you have an idea to improve OneSide or you find a bug please open an issue [here](https://github.com/Marius-brt/oneside-js/issues).
