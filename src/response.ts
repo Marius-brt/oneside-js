@@ -28,8 +28,13 @@ export class Response {
     return this;
   }
 
-  ejs(data: object): Response {
+  setEjs(data: object): Response {
     this.settings.ejs = data;
+    return this;
+  }
+
+  ejs(data: object): Response {
+    this.settings.ejs = merge(this.settings.ejs, data);
     return this;
   }
 

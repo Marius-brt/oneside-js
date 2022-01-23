@@ -103,6 +103,12 @@ export interface AppSettings {
    * @default true
    */
   parserBody: boolean;
+  /**
+   * Open the website in the browser at the startup of the app
+   * @type { boolean }
+   * @default true
+   */
+  openAutomatically: boolean;
   paths: {
     /**
      * Public folder where you put your images, css, etc..
@@ -137,6 +143,7 @@ export class Application extends Router {
   private settings: AppSettings = {
     port: 5000,
     address: 'localhost',
+    openAutomatically: true,
     showCompiling: true,
     global: {},
     baseFile: 'index.ejs',
@@ -449,7 +456,7 @@ export class Application extends Router {
                           )}`,
                         );
                       if (process.argv[3] === 'first') {
-                        open(`http://${this.settings.address}:${port}`);
+                        if (this.settings.openAutomatically) open(`http://${this.settings.address}:${port}`);
                       } else {
                         this.io?.sockets.emit('reload_live');
                       }

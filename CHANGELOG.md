@@ -1,3 +1,8 @@
+## [3.0.1] - 2022-01-23
+
+- The ejs function now merges the ejs parameters. This allows the middleware to add ejs parameters. However if you want to set the ejs parameters you can use the setEjs() function
+- openAutomatically option. When this option is true your website will be automatically open at the startup of your application in your browser (only in dev mode)
+
 ## [3.0.0] - 2022-01-23
 
 - OneSide no longer uses Express. It now has its own http server. This allows to optimize the performance of OneSide because Express is a rather heavy framework and also it allows to have cleaner and understandable classes.
