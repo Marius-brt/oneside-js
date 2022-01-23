@@ -78,7 +78,7 @@ export interface AppSettings {
    * @type { boolean }
    * @default true
    */
-  printPublicUri: boolean;
+  printPublicUrl: boolean;
   /**
    * Paths of public folders and files
    * @type { string[] }
@@ -145,7 +145,7 @@ export class Application extends Router {
     ignores: [],
     publicPaths: [],
     reloadPaths: [],
-    printPublicUri: true,
+    printPublicUrl: true,
     parseCookies: true,
     parserBody: true,
     paths: {
@@ -408,6 +408,7 @@ export class Application extends Router {
                         if (typeof pth === 'string') this.settings.ignores[i] = resolve(pth);
                       });
                       this.settings.ignores.push(/(^|[\\])\../);
+                      this.settings.reloadPaths.push(this.settings.paths.views);
                       chokidar
                         .watch(process.cwd(), {
                           ignoreInitial: true,
@@ -417,8 +418,10 @@ export class Application extends Router {
                         .on('all', (event, path) => {
                           if (
                             path.includes(resolve(this.settings.paths.public)) ||
-                            path.includes(resolve(this.settings.paths.views)) ||
-                            path.includes(resolve(this.settings.paths.components)) ||
+                            path.includes(resolve(this.settings.paths.components))
+                          ) {
+                            this.io?.sockets.emit('reload_live');
+                          } else if (
                             path === join(process.cwd(), this.settings.baseFile) ||
                             this.settings.reloadPaths.some((el) => path.includes(resolve(el)))
                           ) {
@@ -438,7 +441,7 @@ export class Application extends Router {
                     }
                     this.server.listen(port, this.settings.address, () => {
                       print('log', `Server OneSide started on http://${this.settings.address}:${port} !`);
-                      if (this.settings.printPublicUri)
+                      if (this.settings.printPublicUrl)
                         print(
                           'gray',
                           `Public folder Url: http://${this.settings.address}:${port}${normalize(
@@ -455,7 +458,7 @@ export class Application extends Router {
                   } else {
                     this.server.listen(port, this.settings.address, () => {
                       print('log', `Server OneSide started on http://${this.settings.address}:${port} !`);
-                      if (this.settings.printPublicUri)
+                      if (this.settings.printPublicUrl)
                         print(
                           'gray',
                           `Public folder Url: http://${this.settings.address}:${port}${normalize(
@@ -540,7 +543,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
         const splt = el.replace(/\\/g, '/').split('/');
         splt.shift();
         const pth = './compiled/' + splt.join('/');
-        mkdir(dirname(pth), { recursive: true }, (err) => {
+        await mkdir(dirname(pth), { recursive: true }, async (err) => {
           if (err) print('error', 'Failed to compile !', true);
           let $ = cheerio.load(baseHtml);
           const splt2 = el.replace(/\\/g, '/').split('/');
@@ -549,7 +552,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
           const lines: string[] = [];
           const fileTags: { name: string; value: string }[] = [];
           const tags: string[] = ['title', 'description', 'keywords', 'author', 'viewport'];
-          lineReader.eachLine(
+          await lineReader.eachLine(
             pth2,
             (line) => {
               const lnTag = tags.find((tag) => line.trim().startsWith(`:${tag}:`));
@@ -589,8 +592,8 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
                 pageHtml = $2.html();
                 const htmlSplt = splitOnce(pageHtml, '<script');
                 const body = $('body').children();
-                if (baseHtml.includes(':page:')) {
-                  $ = cheerio.load($.html().replace(':page:', htmlSplt[0]));
+                if (baseHtml.includes('$page$')) {
+                  $ = cheerio.load($.html().replace('$page$', htmlSplt[0]));
                 } else {
                   if (body.length > 0) {
                     let found = false;
@@ -635,7 +638,7 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
 						  </script>`);
                 }
               }
-              writeFileSync(
+              await writeFileSync(
                 resolve(pth),
                 unescapeHTML(
                   minify($.html(), {
@@ -648,11 +651,13 @@ function compile(pages: string, baseHtml: string, showCompiling: boolean, dev: b
           );
         });
       }
-      if (bar) bar.stop();
-      if (callback) callback();
     })
     .catch((err) => {
       print('failed', `Failed to compile !\n${err}`, true);
+    })
+    .finally(() => {
+      if (bar) bar.stop();
+      if (callback) callback();
     });
 }
 

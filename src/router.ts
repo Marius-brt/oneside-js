@@ -50,7 +50,7 @@ export class Router {
           static: true,
         });
       } else {
-        glob(`${resolve(path)}/**/*`)
+        glob(`${resolve(path)}/**/*`, { filesOnly: true })
           .then((files) => {
             files.forEach((file) => {
               this.#Add({

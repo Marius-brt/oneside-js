@@ -22,20 +22,24 @@ export function init(settings: Partial<AppSettings> = {}): Application {
       }),
     ),
   );
-  get('https://registry.npmjs.org/oneside/latest', (resp) => {
-    let data = '';
-    resp.on('data', (chunk) => {
-      data += chunk;
+  try {
+    get('https://registry.npmjs.org/oneside/latest', (resp) => {
+      let data = '';
+      resp.on('data', (chunk) => {
+        data += chunk;
+      });
+      resp.on('end', () => {
+        const version = JSON.parse(readFileSync(join(__dirname, '../package.json'), { encoding: 'utf-8' })).version;
+        const latest = JSON.parse(data).version;
+        if (version !== latest)
+          print(
+            'info',
+            `New version of OneSide available ${version} (current) -> ${latest}. Use the "npm i oneside@latest" command to install the latest version available.`,
+          );
+      });
     });
-    resp.on('end', () => {
-      const version = JSON.parse(readFileSync(join(__dirname, '../package.json'), { encoding: 'utf-8' })).version;
-      const latest = JSON.parse(data).version;
-      if (version !== latest)
-        print(
-          'info',
-          `New version of OneSide available ${version} (current) -> ${latest}. Use the "npm i oneside@latest" command to install the latest version available.`,
-        );
-    });
-  });
+  } catch (ex) {
+    // empty
+  }
   return new Application(settings);
 }

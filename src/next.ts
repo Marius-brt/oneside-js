@@ -24,7 +24,8 @@ export class Next {
       if (this.notFoundEndpoint) {
         this.notFoundEndpoint(this.req, this.res, this);
       } else {
-        this.res.send(`<p>404 not found</p>`);
+        this.res.setHeader('Content-Type', 'text/html');
+        this.res.status(404).send(`<p>404 not found</p>`);
       }
     }
   }
