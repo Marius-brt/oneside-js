@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2015",
+    "target": "ES6",
     "module": "CommonJS",
     "declaration": true,
     "outDir": "dist",
@@ -8,5 +8,5 @@
     "strict": true
   },
   "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "**/__tests__/*"]
+  "exclude": ["node_modules", "**/__tests__/*", "typings"]
 }

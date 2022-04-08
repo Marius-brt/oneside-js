@@ -1,45 +1,25 @@
-import { ServerResponse } from 'http';
-import merge from 'deepmerge';
-import ejs from 'ejs';
-import { resolve, join } from 'path';
-import { existsSync } from 'fs';
+import { Request, ICookie, IResponse } from './interfaces';
 import { STATUS_CODES } from 'http';
-
-import { print } from './utils';
-
-interface IResponseSettings {
-  global: object;
-  ejs: object;
-  file: string;
-  useCache: boolean;
-  dev: boolean;
-}
+import { Next } from './next';
 
 export class Response {
-  constructor(private res: ServerResponse, private settings: IResponseSettings) {}
+  constructor(private res: any, private req: Request, private settings: IResponse) {}
 
   status(code: number): Response {
     this.res.statusCode = code;
     return this;
   }
 
-  global(data: object): Response {
-    this.settings.global = merge(this.settings.global, data);
-    return this;
+  error(code: number) {
+    if (!this.res.writableEnded && global.errors[code]) {
+      const next = new Next(this, this.req, global.errors[code].middlewares);
+      global.errors[code].middlewares[0](this.req, this, next.next.bind(next));
+    }
   }
 
-  setEjs(data: object): Response {
-    this.settings.ejs = data;
+  setHeader(key: string, value: string): Response {
+    if (!this.res.writableEnded) this.res.setHeader(key, value);
     return this;
-  }
-
-  ejs(data: object): Response {
-    this.settings.ejs = merge(this.settings.ejs, data);
-    return this;
-  }
-
-  setHeader(name: string, value: string) {
-    this.res.setHeader(name, value);
   }
 
   json(data: object) {
@@ -49,21 +29,30 @@ export class Response {
     }
   }
 
-  send(text: string) {
-    if (!this.res.writableEnded) this.res.end(typeof text === 'object' ? JSON.stringify(text) : text);
+  send(data: string) {
+    if (!this.res.writableEnded) {
+      this.res.setHeader('Content-Type', 'text/plain');
+      this.res.end(data);
+    }
   }
 
-  rest(data?: any) {
-    const msg: { [k: string]: any } = {
+  html(data: string) {
+    if (!this.res.writableEnded) {
+      this.res.setHeader('Content-Type', 'text/html');
+      this.res.end(data);
+    }
+  }
+
+  rest(...args: [message?: string, data?: object] | [data?: object]) {
+    const msg = args.length > 0 && typeof args[0] == 'string' ? args[0] : null;
+    const result: { [k: string]: any } = {
       success: this.res.statusCode < 300,
-      message: STATUS_CODES[this.res.statusCode],
+      message: msg || STATUS_CODES[this.res.statusCode],
       status: this.res.statusCode,
     };
-    if (data) {
-      if (this.res.statusCode < 300) msg.data = data;
-      else msg.error = data;
-    }
-    this.json(msg);
+    if (args.length > 0 && typeof args[0] == 'object') result.data = args[0];
+    else if (args.length == 2 && typeof args[1] == 'object') result.data = args[1];
+    this.json(result);
   }
 
   redirect(url: string) {
@@ -75,46 +64,32 @@ export class Response {
         .end();
   }
 
-  render(page: string) {
-    if (!this.res.writableEnded) {
-      this.settings.file = page.replace('.ejs', '');
-      const pth = resolve(join('./compiled', `${this.settings.file}.ejs`));
-      if (this.settings.dev && !existsSync(pth)) {
-        this.status(404).send(`File ${pth} doesnt exist`);
-        print('error', `File ${pth} not found !`);
-        return;
-      }
-      this.res.setHeader('Content-Type', 'text/html');
-      ejs.renderFile(pth, this.settings.ejs, { cache: !this.settings.dev && this.settings.useCache }, (err, html) => {
-        if (err) {
-          print('failed', `Failed to render page !\n${err}`);
-          this.res.statusCode = 500;
-          if (this.settings.dev)
-            return this.res
-              .end(`<p>Failed to render page !</p><div>${err}</div><script src="/socket.io/socket.io.js"></script>
-				  <script>
-				  const socket = io();
-				  let live_s_connected = false;
-				  socket.on('connected_live', () => {
-					  if(live_s_connected) location.reload()
-					  live_s_connected = true;
-					  console.log("Connected to OneSide Live Server !")
-				  })
-				  socket.on('reload_live', () => {
-					  location.reload()
-				  })
-				  </script>`);
-          else return this.res.end(`<p>Failed to render page !</p>`);
-        }
-        if (Object.keys(this.settings.global).length > 0)
-          html = html.replace('$GLOBAL$', `<script>const global = ${JSON.stringify(this.settings.global)}</script>`);
-        else html = html.replace('$GLOBAL$', '');
-        this.res.end(html);
-      });
-    }
+  isEnded(): boolean {
+    return this.res.writableEnded;
   }
 
-  isSended(): boolean {
-    return this.res.writableEnded;
+  setCookies(cookies: { [k: string]: string | ICookie }): Response {
+    if (!this.res.writableEnded) {
+      if (Object.entries(cookies).length > 0) {
+        const list = [];
+        for (const [key, value] of Object.entries(cookies)) {
+          if (typeof value === 'string') {
+            list.push(`${key}=${value}; `);
+          } else {
+            var el = `${key}=${value.value}; `;
+            if (value.path) el += `Path=${value.path}; `;
+            if (value.domain) el += `Domain=${value.domain}; `;
+            if (value.expires) el += `Expires=${value.expires.toUTCString()}; `;
+            if (value.maxAge) el += `Max-Age=${value.maxAge}; `;
+            if (value.httpOnly) el += `HttpOnly; `;
+            if (value.secure) el += `Secure; `;
+            if (value.sameSite) el += `SameSite=${value.sameSite}; `;
+            list.push(el);
+          }
+        }
+        this.res.setHeader('Set-Cookie', list);
+      }
+    }
+    return this;
   }
 }

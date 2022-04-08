@@ -1,60 +1,46 @@
 {
-  "name": "oneside",
-  "version": "3.0.1",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "prepare": "tsc && npm run lint && npm run format",
-    "lint": "eslint . --ext .ts",
-    "format": "prettier --write \"dist/**/*.ts\" \"dist/**/*.js\""
-  },
-  "files": [
-    "dist/**/*"
-  ],
-  "author": "marius.brt",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/cli-progress": "^3.9.2",
-    "@types/ejs": "^3.1.0",
-    "@types/figlet": "^1.5.4",
-    "@types/fs-extra": "^9.0.13",
-    "@types/html-minifier": "^4.0.2",
-    "@types/line-reader": "0.0.34",
-    "@types/mime-types": "^2.1.1",
-    "@types/node": "^17.0.10",
-    "@typescript-eslint/eslint-plugin": "^5.10.0",
-    "@typescript-eslint/parser": "^5.10.0",
-    "eslint": "^8.7.0",
-    "prettier": "^2.5.1",
-    "typescript": "^4.5.4"
-  },
-  "dependencies": {
-    "ansi-colors": "^4.1.1",
-    "cheerio": "^1.0.0-rc.10",
-    "chokidar": "^3.5.3",
-    "cli-progress": "^3.10.0",
-    "deepmerge": "^4.2.2",
-    "ejs": "^3.1.6",
-    "figlet": "^1.5.2",
-    "fs-extra": "^10.0.0",
-    "html-minifier": "^4.0.0",
-    "line-reader": "^0.4.0",
-    "mime-types": "^2.1.34",
-    "open": "^8.4.0",
-    "portfinder": "^1.0.28",
-    "socket.io": "^4.4.1",
-    "tiny-glob": "^0.2.9"
-  },
-  "description": "OneSide is a HTTP Node Server for websites.",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Marius-brt/oneside-js"
-  },
-  "keywords": [
-    "HTTP",
-    "Server",
-    "Render",
-    "Ejs"
-  ]
+    "name": "oneside",
+    "version": "4.0.0",
+    "description": "",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "test": "tsc && node dist/test.js dev first",
+        "start": "tsc && node dist/index.js",
+        "build": "tsc",
+        "prepare": "tsc && npm run lint && npm run format",
+        "lint": "eslint . --ext .ts",
+        "format": "prettier --write \"dist/**/*.ts\" \"dist/**/*.js\""
+    },
+    "files": [
+        "dist/**/*"
+    ],
+    "author": "marius.brt",
+    "license": "ISC",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Marius-brt/oneside-js"
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.23",
+        "@types/qrcode": "^1.4.2",
+        "@typescript-eslint/eslint-plugin": "^5.18.0",
+        "@typescript-eslint/parser": "^5.18.0",
+        "eslint": "^8.12.0",
+        "prettier": "^2.6.2",
+        "typescript": "^4.6.3"
+    },
+    "dependencies": {
+        "ansi-colors": "^4.1.1",
+        "deepmerge": "^4.2.2",
+        "figlet": "^1.5.2",
+        "qrcode": "^1.5.0",
+        "tiny-glob": "^0.2.9"
+    },
+    "compilerOptions": {
+        "typeRoots": [
+            "./types",
+            "./node_modules/@types"
+        ]
+    }
 }

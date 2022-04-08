@@ -1,45 +1,40 @@
-import figlet, { Fonts } from 'figlet';
-import color from 'ansi-colors';
-import { get } from 'https';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { Server } from './server';
+import { ISettings, IEndpoint } from './interfaces';
+import * as router from './router';
+import { Interface } from 'readline';
+import merge from 'deepmerge';
+import { cors } from './plugins/cors';
+import * as cookie from './plugins/cookieParser';
 
-import { Application, AppSettings } from './server';
-import { print } from './utils';
-import { Router } from './router';
-
-export function router(): Router {
-  return new Router();
+declare global {
+  var isDev: boolean;
+  var firstLaunch: boolean;
+  var started: boolean;
+  var rl: Interface;
+  var settings: ISettings;
+  var endpoints: { [k: string]: IEndpoint[] };
+  var errors: { [k: string]: IEndpoint };
 }
 
-export function init(settings: Partial<AppSettings> = {}): Application {
-  console.clear();
-  const fonts: Fonts[] = ['Ghost', 'Sub-Zero', 'Delta Corps Priest 1', 'Dancing Font', 'DOS Rebel', 'ANSI Regular'];
-  console.log(
-    color.yellow(
-      figlet.textSync('OneSide', {
-        font: fonts[Math.floor(Math.random() * fonts.length)],
-      }),
-    ),
-  );
-  try {
-    get('https://registry.npmjs.org/oneside/latest', (resp) => {
-      let data = '';
-      resp.on('data', (chunk) => {
-        data += chunk;
-      });
-      resp.on('end', () => {
-        const version = JSON.parse(readFileSync(join(__dirname, '../package.json'), { encoding: 'utf-8' })).version;
-        const latest = JSON.parse(data).version;
-        if (version !== latest)
-          print(
-            'info',
-            `New version of OneSide available ${version} (current) -> ${latest}. Use the "npm i oneside@latest" command to install the latest version available.`,
-          );
-      });
-    });
-  } catch (ex) {
-    // empty
-  }
-  return new Application(settings);
+const defaultSettings: ISettings = {
+  port: 5000,
+  address: 'localhost',
+  serverType: 'http',
+};
+
+export const Cors = cors;
+export const cookieParser = cookie.cookieParser;
+
+export function Router(): router.Router {
+  return new router.Router();
 }
+
+export default (settings: Partial<ISettings> = {}): Server => {
+  global.endpoints = {};
+  global.errors = {};
+  global.settings = merge(defaultSettings, settings);
+  global.started = false;
+  global.isDev = process.argv.length > 2 && process.argv[2] === 'dev';
+  global.firstLaunch = global.isDev && process.argv.length > 3 && process.argv[3] === 'first';
+  return new Server();
+};

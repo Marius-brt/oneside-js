@@ -1,32 +1,14 @@
-import { Request } from './request';
+import { IMiddleware, Request } from './interfaces';
 import { Response } from './response';
-import { IMiddleware } from './router';
 
 export class Next {
-  private i = 0;
-  private ended = false;
-  constructor(
-    private req: Request,
-    private res: Response,
-    private middlewares: IMiddleware[],
-    private notFoundEndpoint: IMiddleware | undefined,
-  ) {}
+  private i = 1;
+  constructor(private res: Response, private req: Request, private middlewares: IMiddleware[]) {}
 
-  ok() {
-    if (!this.ended && this.middlewares[this.i + 1]) {
+  next() {
+    if (this.i < this.middlewares.length) {
+      this.middlewares[this.i](this.req, this.res, this.next.bind(this));
       this.i++;
-      this.middlewares[this.i](this.req, this.res, this);
-    }
-  }
-
-  notFound() {
-    if (!this.ended) {
-      if (this.notFoundEndpoint) {
-        this.notFoundEndpoint(this.req, this.res, this);
-      } else {
-        this.res.setHeader('Content-Type', 'text/html');
-        this.res.status(404).send(`<p>404 not found</p>`);
-      }
     }
   }
 }
