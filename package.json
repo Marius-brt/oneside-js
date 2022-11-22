@@ -43,7 +43,7 @@
     "mime-types": "^2.1.34",
     "open": "^8.4.0",
     "portfinder": "^1.0.28",
-    "socket.io": "^4.4.1",
+    "socket.io": "^4.5.0",
     "tiny-glob": "^0.2.9"
   },
   "description": "OneSide is a HTTP Node Server for websites.",
